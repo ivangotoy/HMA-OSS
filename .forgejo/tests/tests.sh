@@ -57,6 +57,37 @@ check "failed gradle step: build fails" [ "$rc" != 0 ]
 check "failed gradle step: key.jks removed" [ ! -e "$W/home/key.jks" ]
 check "failed gradle step: local.properties removed" [ ! -e "$W/local.properties" ]
 
+# H2: local.properties is read by java.util.Properties; plain secrets give the same bytes as before
+check "plain secrets: local.properties bytes unchanged" cmp -s "$SCRATCH/ok/gradle.log.props" \
+    <(printf 'storePassword=%s\nkeyAlias=%s\nkeyPassword=%s\nfileDir=%s\n' storepw1 alias1 keypw1 "$SCRATCH/ok/home/key.jks")
+make_work esc
+T_STOREPW='a\tb\c' T_ALIAS=' lead' T_KEYPW="$(printf 'p\303\244#=:x\tq\360\237\230\200')" run_build; rc=$?
+check "special secrets: build exit 0" [ "$rc" = 0 ]
+check "special secrets: escaped for Properties" cmp -s "$W/gradle.log.props" <(printf '%s\n' \
+    'storePassword=a\\tb\\c' 'keyAlias=\ lead' 'keyPassword=p\u00e4#=:x\tq\ud83d\ude00' "fileDir=$W/home/key.jks")
+JAVA="${JAVA_HOME:+$JAVA_HOME/bin/}java"
+if command -v "$JAVA" >/dev/null 2>&1; then
+    cat > "$SCRATCH/P.java" <<'EOF'
+public class P { public static void main(String[] a) throws Exception {
+    java.util.Properties p = new java.util.Properties();
+    try (java.io.InputStream in = new java.io.FileInputStream(a[0])) { p.load(in); }
+    for (String k : new String[] {"storePassword", "keyAlias", "keyPassword"}) {
+        StringBuilder b = new StringBuilder(k + "=");
+        for (char c : p.getProperty(k).toCharArray()) b.append(String.format("%04x ", (int) c));
+        System.out.println(b.toString().trim());
+    } } }
+EOF
+    want="$(T_STOREPW='a\tb\c' T_ALIAS=' lead' T_KEYPW="$(printf 'p\303\244#=:x\tq\360\237\230\200')" python3 -I -c '
+import os
+for k, v in (("storePassword", "T_STOREPW"), ("keyAlias", "T_ALIAS"), ("keyPassword", "T_KEYPW")):
+    u = os.environ[v].encode("utf-16-be")
+    print(k + "=" + " ".join(u[i:i + 2].hex() for i in range(0, len(u), 2)))')"
+    got="$("$JAVA" "$SCRATCH/P.java" "$W/gradle.log.props" 2>/dev/null)"
+    check "special secrets: Properties.load reads them back unchanged" [ "$got" = "$want" ]
+else
+    echo "SKIP Properties.load round trip: no java"
+fi
+
 # H3: the feed URL must be a plain https URL before it reaches sed and the Kotlin source
 make_work port; T_SERVER=https://forge.example.invalid:3000/sub run_build; rc=$?
 check "server URL with port and path: accepted" [ "$rc" = 0 ]
