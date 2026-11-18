@@ -12,12 +12,19 @@ check() { local name="$1"; shift; if "$@"; then ok "$name"; else no "$name"; fi;
 
 UPSTREAM_LINE='    const val UPDATE_CHECK_URL = "https://api.github.com/repos/frknkrc44/HMA-OSS/releases/latest"'
 CONSTS=app/src/main/java/icu/nullptr/hidemyapplist/data/AppConstants.kt
+COMMON=app/src/main/java/icu/nullptr/hidemyapplist/ui/util/Common.kt
+COMMON_TEXT="val isTestBuild get() = BuildConfig.VERSION_NAME.let { name ->
+    name.count { it == '-' } != 1 ||
+    name.count { it == '+' } > 0 ||
+    name.split('-').last().length == 8
+}"
 
 # fake workspace for module-ci.conf build(): gradlew stub records what the build sees
 make_work() {
     W="$SCRATCH/$1"
     mkdir -p "$W/home" "$W/out" "$W/$(dirname "$CONSTS")"
     printf 'object AppConstants {\n%s\n}\n' "$UPSTREAM_LINE" > "$W/$CONSTS"
+    mkdir -p "$W/$(dirname "$COMMON")"; printf '%s\n' "$COMMON_TEXT" > "$W/$COMMON"
     cat > "$W/gradlew" <<'EOF'
 #!/bin/sh
 echo "$*" >> "$STUB_LOG"
@@ -41,7 +48,7 @@ run_build() {
         SIGN_KEYSTORE_B64="$(printf 'made-up keystore bytes' | base64)" SIGN_KEY_ALIAS="${T_ALIAS:-alias1}" \
         SIGN_STORE_PASSWORD="${T_STOREPW:-storepw1}" SIGN_KEY_PASSWORD="${T_KEYPW:-keypw1}" \
         SERVER_URL="${T_SERVER:-https://forge.example.invalid}" REPOSITORY="${T_REPO:-owner/HMA-OSS}" \
-        bash -c 'set -euo pipefail; git() { :; }; . "$1"; build' _ "$CONF") > "$W/build.out" 2>&1
+        bash -c 'set -euo pipefail; git() { printf "%s\\n" "$*" >> "$STUB_LOG.git"; }; . "$1"; build' _ "$CONF") > "$W/build.out" 2>&1
 }
 
 # H1: secrets are owner-only while Gradle runs and gone after the build shell exits
@@ -53,6 +60,16 @@ check "build: key.jks removed after success" [ ! -e "$W/home/key.jks" ]
 check "build: local.properties removed after success" [ ! -e "$W/local.properties" ]
 check "build: update URL points at the forge feed" \
     grep -qF '"https://forge.example.invalid/owner/HMA-OSS/raw/branch/main/.forgejo/app-update.json"' "$W/$CONSTS"
+
+# U8: a release build is never classed as a test build, whatever the abbreviated hash length
+check "build: isTestBuild length clause replaced" grep -qx '    false' "$W/$COMMON"
+check "build: no 8-character clause left" sh -c '! grep -qF "last().length == 8" "$1"' _ "$W/$COMMON"
+check "build: rest of isTestBuild unchanged" sh -c 'grep -qxF "    name.count { it == '"'"'+'"'"' } > 0 ||" "$1"' _ "$W/$COMMON"
+check "build: both edited files assume-unchanged" sh -c 'grep -qx "update-index --assume-unchanged $2" "$1" &&
+    grep -qx "update-index --assume-unchanged $3" "$1"' _ "$W/gradle.log.git" "$CONSTS" "$COMMON"
+make_work moved; printf 'val isTestBuild get() = false\n' > "$W/$COMMON"; run_build; rc=$?
+check "isTestBuild text moved: build refused" [ "$rc" != 0 ]
+check "isTestBuild text moved: no secrets written" [ ! -e "$W/home/key.jks" ]
 
 make_work fail; STUB_FAIL_APP=1 run_build; rc=$?
 check "failed gradle step: build fails" [ "$rc" != 0 ]
