@@ -114,5 +114,14 @@ check "release_files: feed content" cmp -s "$W/.forgejo/app-update.json" <(print
     '  "tag_name": "main-0123abc",' '  "name": "HMA-OSS main-0123abc-ci7",' '  "body": "line one\nsha256 \"x\"",' \
     '  "html_url": "https://forge.example.invalid/owner/HMA-OSS/releases/download/vmain-0123abc-ci7/m.zip"' '}')
 
+# module scripts (run by the root manager's sh): stubs for pm, am and ui_print
+ASSETS="$ROOT/zygote/src/main/assets"
+
+# U4: a failed fresh install names user 0
+out="$(sh -c 'ui_print() { echo "$*"; }
+pm() { case "$1" in install) return 1 ;; esac; return 0; }
+MODPATH=/made/up; . "$1"' _ "$ASSETS/customize.d/35-install-manager-app.sh" 2>&1)"
+check "35-install: failed fresh install names user 0" grep -qxF '! Cannot install the manager app for user 0' <<< "$out"
+
 echo "passed $PASS failed $FAIL"
 [ "$FAIL" = 0 ]

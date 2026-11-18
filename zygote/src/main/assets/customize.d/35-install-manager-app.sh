@@ -5,7 +5,7 @@ APK_FILE=$MODPATH/manager.apk
 install_pkg() {
   pm install --user $1 $APK_FILE 2>&1
 
-  [ $? -ne 0 ] && ui_print "! Cannot install the manager app for user "$user
+  [ $? -ne 0 ] && ui_print "! Cannot install the manager app for user "$1
 }
 
 # we need to determine the manager app was installed or not at first
