@@ -184,9 +184,12 @@ if [ -n "${MODULE_CI_BUILD_TEST:-}" ] && [ "$(id -u)" = 0 ] && [ -f /.dockerenv 
     B="$SCRATCH/bm"; mkdir -p "$B/shim" "$B/work/.forgejo"
     chmod 755 "$SCRATCH" "$B"   # uid 1000 must reach the work tree (mktemp -d is 0700)
     : > "$B/argv.log"; chmod 666 "$B/argv.log"
+    # python shims: record argv, then exec the real tool with the environment untouched (a sh shim
+    # would drop non-identifier entries and add PWD, hiding what module-ci.sh passes on)
     for t in env setpriv; do
         real="$(command -v "$t")"
-        printf '#!/bin/sh\nprintf "%%s\\n" "%s $*" >> "%s"\nexec %s "$@"\n' "$t" "$B/argv.log" "$real" > "$B/shim/$t"
+        printf '#!%s\nimport os, sys\nopen("%s", "a").write(" ".join(["%s"] + sys.argv[1:]) + "\\n")\nos.execv("%s", ["%s"] + sys.argv[1:])\n' \
+            "$(command -v python3)" "$B/argv.log" "$t" "$real" "$real" > "$B/shim/$t"
         chmod 755 "$B/shim/$t"
     done
     cp "$ROOT/.forgejo/module-ci.sh" "$B/work/.forgejo/module-ci.sh"
@@ -221,7 +224,6 @@ EOF
     check "build mode: no other variable, invalid name or function leaks" \
         sh -c '[ -s "$1" ] && ! grep -qE "^(UNRELATED|A-B|BASH_FUNC_)" "$1"' _ "$E"
     sed "s|$B|<B>|g; s|$sha|<SHA>|g; s|^|ARGV |" "$B/argv.log"
-    # PWD comes from the sh-based setpriv shim, not from module-ci.sh
     sed "s|$B|<B>|g; s|$sha|<SHA>|g; s|^|BUILD-USER-ENV |" "$E"
 else
     echo "SKIP module-ci.sh build mode: needs MODULE_CI_BUILD_TEST=1, root and a container"
