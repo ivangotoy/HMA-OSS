@@ -7,7 +7,6 @@ import com.v7878.unsafe.invoke.EmulatedStackFrame.RETURN_VALUE_IDX
 import org.frknkrc44.hma_oss.zygote.service.SystemServerHook
 import java.lang.reflect.Constructor
 import java.lang.reflect.Field
-import java.lang.reflect.Method
 
 object ZLUtils {
     /**
@@ -154,23 +153,12 @@ object ZLUtils {
         }
     }
 
-    private fun findClass(className: String, systemClassLoader: Boolean = false) = if (systemClassLoader) {
-        Class.forName(className, true, SystemServerHook.classLoader)
-    } else {
-        Class.forName(className)
-    }
-
-    fun findMethod(className: String, name: String, systemClassLoader: Boolean = false, vararg args: Class<*>): Method {
-        val clazz = findClass(className, systemClassLoader)
-        return getDeclaredMethod(clazz, name, *args)
-    }
-
     fun findField(clazz: Class<*>, name: String): Field? {
         var currentClazz: Class<*>? = clazz
 
         while (currentClazz != null) {
-            val field = runCatching { getDeclaredField(clazz, name) }.getOrNull()
-            if (field != null) return field
+            val field = runCatching { clazz.getField(name) }.getOrNull()
+            if (field != null) return field.apply { isAccessible = true }
             currentClazz = currentClazz.superclass
         }
 
