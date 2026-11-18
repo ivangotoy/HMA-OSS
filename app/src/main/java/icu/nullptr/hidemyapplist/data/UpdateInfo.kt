@@ -17,16 +17,18 @@ fun fetchLatestUpdate(onGetUpdateInfo: suspend (UpdateInfo) -> Unit) {
             URL(AppConstants.UPDATE_CHECK_URL).readText()
         }.getOrNull() ?: return@thread
 
-        val json = JSONObject(jsonText)
+        runCatching {
+            val json = JSONObject(jsonText)
 
-        runBlocking {
-            onGetUpdateInfo(
-                UpdateInfo(
-                    versionName = json.getString("tag_name"),
-                    content = json.getString("body"),
-                    downloadUrl = json.getString("html_url"),
+            runBlocking {
+                onGetUpdateInfo(
+                    UpdateInfo(
+                        versionName = json.getString("tag_name"),
+                        content = json.getString("body"),
+                        downloadUrl = json.getString("html_url"),
+                    )
                 )
-            )
+            }
         }
     }
 }
