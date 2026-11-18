@@ -294,6 +294,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             return
         }
 
+        val viewScope = viewLifecycleOwner.lifecycleScope
         thread {
             var count = 0
 
@@ -304,7 +305,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             if (serviceVersion > 0) {
                 workMode = ServiceClient.managerWorkMode
 
-                lifecycleScope.launch {
+                viewScope.launch {
                     loadEnabledIndicator(serviceVersion, workMode)
                 }
             }
