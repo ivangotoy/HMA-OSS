@@ -34,7 +34,9 @@ EOF
 
 # runs build() as module-ci.sh build-user does: a bash with set -euo pipefail that exits after build
 run_build() {
-    (cd "$W" && env -i PATH="$PATH" HOME="$W/home" OUT="$W/out" STUB_LOG="$W/gradle.log" \
+    # fixed system PATH, like the CI image: an inherited PATH can resolve python3 to a per-user
+    # version-manager shim that fails under env -i with the fake HOME
+    (cd "$W" && env -i PATH=/usr/local/bin:/usr/bin:/bin HOME="$W/home" OUT="$W/out" STUB_LOG="$W/gradle.log" \
         STUB_FAIL_APP="${STUB_FAIL_APP:-}" JAVA_HOME_21=/made-up/jdk \
         SIGN_KEYSTORE_B64="$(printf 'made-up keystore bytes' | base64)" SIGN_KEY_ALIAS="${T_ALIAS:-alias1}" \
         SIGN_STORE_PASSWORD="${T_STOREPW:-storepw1}" SIGN_KEY_PASSWORD="${T_KEYPW:-keypw1}" \
@@ -145,7 +147,9 @@ esac
 EOF
 printf '#!/bin/sh\necho "am $*" >> "$STUB_LOG"\n' > "$M/bin/am"
 chmod +x "$M/bin/pm" "$M/bin/am"
-action() { : > "$M/log"; PATH="$M/bin:$PATH" STUB_LOG="$M/log" sh "$M/action.sh" > "$M/out" 2>&1; }
+# action.sh uses "&>", which the device shells (mksh, busybox ash) read as a redirect; dash reads it
+# as "&" plus ">", so run it with bash, not with whatever sh is
+action() { : > "$M/log"; PATH="$M/bin:$PATH" STUB_LOG="$M/log" bash "$M/action.sh" > "$M/out" 2>&1; }
 STUB_INSTALL_RC=1 action; rc=$?
 check "action: failed install: non-zero exit" [ "$rc" != 0 ]
 check "action: failed install: no launch" sh -c '! grep -q "^am start" "$1"' _ "$M/log"
