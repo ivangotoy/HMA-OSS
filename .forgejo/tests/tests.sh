@@ -61,10 +61,10 @@ check "failed gradle step: local.properties removed" [ ! -e "$W/local.properties
 check "plain secrets: local.properties bytes unchanged" cmp -s "$SCRATCH/ok/gradle.log.props" \
     <(printf 'storePassword=%s\nkeyAlias=%s\nkeyPassword=%s\nfileDir=%s\n' storepw1 alias1 keypw1 "$SCRATCH/ok/home/key.jks")
 make_work esc
-T_STOREPW='a\tb\c' T_ALIAS=' lead' T_KEYPW="$(printf 'p\303\244#=:x\tq\360\237\230\200')" run_build; rc=$?
+T_STOREPW='a\tb\c' T_ALIAS='al ias' T_KEYPW="$(printf 'p\303\244#=:x\tq\360\237\230\200')" run_build; rc=$?
 check "special secrets: build exit 0" [ "$rc" = 0 ]
 check "special secrets: escaped for Properties" cmp -s "$W/gradle.log.props" <(printf '%s\n' \
-    'storePassword=a\\tb\\c' 'keyAlias=\ lead' 'keyPassword=p\u00e4#=:x\tq\ud83d\ude00' "fileDir=$W/home/key.jks")
+    'storePassword=a\\tb\\c' 'keyAlias=al ias' 'keyPassword=p\u00e4#=:x\tq\ud83d\ude00' "fileDir=$W/home/key.jks")
 JAVA="${JAVA_HOME:+$JAVA_HOME/bin/}java"
 if command -v "$JAVA" >/dev/null 2>&1; then
     cat > "$SCRATCH/P.java" <<'EOF'
@@ -77,7 +77,7 @@ public class P { public static void main(String[] a) throws Exception {
         System.out.println(b.toString().trim());
     } } }
 EOF
-    want="$(T_STOREPW='a\tb\c' T_ALIAS=' lead' T_KEYPW="$(printf 'p\303\244#=:x\tq\360\237\230\200')" python3 -I -c '
+    want="$(T_STOREPW='a\tb\c' T_ALIAS='al ias' T_KEYPW="$(printf 'p\303\244#=:x\tq\360\237\230\200')" python3 -I -c '
 import os
 for k, v in (("storePassword", "T_STOREPW"), ("keyAlias", "T_ALIAS"), ("keyPassword", "T_KEYPW")):
     u = os.environ[v].encode("utf-16-be")
@@ -87,6 +87,15 @@ for k, v in (("storePassword", "T_STOREPW"), ("keyAlias", "T_ALIAS"), ("keyPassw
 else
     echo "SKIP Properties.load round trip: no java"
 fi
+
+# edge blanks and trailing line breaks are dropped, as the plain printf format did (Properties.load
+# skips leading blanks; a final line break only ended the line)
+make_work edge
+T_STOREPW="$(printf 'storepw1\nX')" T_STOREPW="${T_STOREPW%X}" T_ALIAS="$(printf ' \talias1')" T_KEYPW="$(printf 'keypw1\r\nX')" \
+    T_KEYPW="${T_KEYPW%X}" run_build; rc=$?
+check "edge blanks: build exit 0" [ "$rc" = 0 ]
+check "edge blanks: same values as plain secrets" cmp -s "$W/gradle.log.props" \
+    <(printf 'storePassword=%s\nkeyAlias=%s\nkeyPassword=%s\nfileDir=%s\n' storepw1 alias1 keypw1 "$W/home/key.jks")
 
 # H3: the feed URL must be a plain https URL before it reaches sed and the Kotlin source
 make_work port; T_SERVER=https://forge.example.invalid:3000/sub run_build; rc=$?
