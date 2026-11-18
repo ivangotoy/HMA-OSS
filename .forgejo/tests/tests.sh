@@ -123,5 +123,29 @@ pm() { case "$1" in install) return 1 ;; esac; return 0; }
 MODPATH=/made/up; . "$1"' _ "$ASSETS/customize.d/35-install-manager-app.sh" 2>&1)"
 check "35-install: failed fresh install names user 0" grep -qxF '! Cannot install the manager app for user 0' <<< "$out"
 
+# U5: action.sh launches the manager only when it is installed
+M="$SCRATCH/mod"; mkdir -p "$M/bin"
+cp "$ASSETS/action.sh" "$M/action.sh"; printf ':\n' > "$M/update_desc.sh"
+cat > "$M/bin/pm" <<'EOF'
+#!/bin/sh
+case "$1" in
+    list) printf 'Users:\n\tUserInfo{0:Owner:c13} running\n' ;;
+    path) [ -n "${STUB_PRESENT:-}" ] || exit 1; echo package:/data/app/made-up/base.apk ;;
+    install) echo "pm install $*" >> "$STUB_LOG"; exit "${STUB_INSTALL_RC:-0}" ;;
+esac
+EOF
+printf '#!/bin/sh\necho "am $*" >> "$STUB_LOG"\n' > "$M/bin/am"
+chmod +x "$M/bin/pm" "$M/bin/am"
+action() { : > "$M/log"; PATH="$M/bin:$PATH" STUB_LOG="$M/log" sh "$M/action.sh" > "$M/out" 2>&1; }
+STUB_INSTALL_RC=1 action; rc=$?
+check "action: failed install: non-zero exit" [ "$rc" != 0 ]
+check "action: failed install: no launch" sh -c '! grep -q "^am start" "$1"' _ "$M/log"
+STUB_INSTALL_RC=0 action; rc=$?
+check "action: install ok: exit 0" [ "$rc" = 0 ]
+check "action: install ok: launched for user 0" grep -q '^am start .*--user 0' "$M/log"
+STUB_PRESENT=1 action; rc=$?
+check "action: already installed: exit 0" [ "$rc" = 0 ]
+check "action: already installed: launched, no install" sh -c '! grep -q "^pm install" "$1" && grep -q "^am start" "$1"' _ "$M/log"
+
 echo "passed $PASS failed $FAIL"
 [ "$FAIL" = 0 ]
