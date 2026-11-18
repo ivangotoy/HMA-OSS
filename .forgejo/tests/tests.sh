@@ -160,5 +160,55 @@ STUB_PRESENT=1 action; rc=$?
 check "action: already installed: exit 0" [ "$rc" = 0 ]
 check "action: already installed: launched, no install" sh -c '! grep -q "^pm install" "$1" && grep -q "^am start" "$1"' _ "$M/log"
 
+# M1: module-ci.sh build mode hands the signing secrets to the build user as environment, never as
+# argv. Build mode chowns the tree, drops to uid 1000 and then runs `kill -9 -1` as uid 1000, so this
+# runs only when asked for (MODULE_CI_BUILD_TEST=1), as root, inside a container.
+if [ -n "${MODULE_CI_BUILD_TEST:-}" ] && [ "$(id -u)" = 0 ] && [ -f /.dockerenv ]; then
+    B="$SCRATCH/bm"; mkdir -p "$B/shim" "$B/work/.forgejo"
+    chmod 755 "$SCRATCH" "$B"   # uid 1000 must reach the work tree (mktemp -d is 0700)
+    : > "$B/argv.log"; chmod 666 "$B/argv.log"
+    for t in env setpriv; do
+        real="$(command -v "$t")"
+        printf '#!/bin/sh\nprintf "%%s\\n" "%s $*" >> "%s"\nexec %s "$@"\n' "$t" "$B/argv.log" "$real" > "$B/shim/$t"
+        chmod 755 "$B/shim/$t"
+    done
+    cp "$ROOT/.forgejo/module-ci.sh" "$B/work/.forgejo/module-ci.sh"
+    cat > "$B/work/.forgejo/module-ci.conf" <<'EOF'
+ZIP_PREFIX=fixture
+build() {
+    tr '\0' '\n' < "/proc/$$/environ" | LC_ALL=C sort > "$OUT/build-user.env"
+    echo zip > "$OUT/module.zip"
+}
+EOF
+    git -C "$B/work" init -q && git -C "$B/work" add -A &&
+        git -C "$B/work" -c user.name=t -c user.email=t@example.invalid commit -qm fixture
+    sha="$(git -C "$B/work" rev-parse HEAD)"
+    S1=made-up-keystore-b64 S2=made-up-alias S3='made-up store pw' S4=made-up-key-pw
+    (cd "$B" && /usr/bin/env -i PATH="$B/shim:/usr/local/bin:/usr/bin:/bin" 'A-B=not-an-identifier' UNRELATED=x JAVA_HOME_21=/made-up/jdk21 \
+        SERVER_URL=https://forge.example.invalid REPOSITORY=owner/fixture BASE_SHA="$sha" \
+        SIGN_KEYSTORE_B64="$S1" SIGN_KEY_ALIAS="$S2" SIGN_STORE_PASSWORD="$S3" SIGN_KEY_PASSWORD="$S4" \
+        bash -c 'f() { :; }; export -f f; exec bash "$1/work/.forgejo/module-ci.sh" build "$1/work"' _ "$B") \
+        > "$B/build.out" 2>&1
+    rc=$?
+    check "build mode: exit 0" [ "$rc" = 0 ]
+    [ "$rc" = 0 ] || sed 's/^/build.out: /' "$B/build.out"
+    check "build mode: build-user started through setpriv" grep -q '^setpriv .* build-user ' "$B/argv.log"
+    for s in "$S1" "$S2" "$S3" "$S4"; do
+        check "build mode: secret '$s' in no env/setpriv argv" sh -c '! grep -qF -- "$1" "$2"' _ "$s" "$B/argv.log"
+    done
+    E="$B/work/.ci-out/build-user.env"
+    check "build mode: build-user got the secrets as environment" \
+        grep -qxF "SIGN_STORE_PASSWORD=$S3" "$E"
+    check "build mode: build-user got SERVER_URL REPOSITORY BASE_SHA" sh -c 'grep -qx "SERVER_URL=https://forge.example.invalid" "$1" &&
+        grep -qx "REPOSITORY=owner/fixture" "$1" && grep -qx "BASE_SHA=$2" "$1"' _ "$E" "$sha"
+    check "build mode: no other variable, invalid name or function leaks" \
+        sh -c '[ -s "$1" ] && ! grep -qE "^(UNRELATED|A-B|BASH_FUNC_)" "$1"' _ "$E"
+    sed "s|$B|<B>|g; s|$sha|<SHA>|g; s|^|ARGV |" "$B/argv.log"
+    # PWD comes from the sh-based setpriv shim, not from module-ci.sh
+    sed "s|$B|<B>|g; s|$sha|<SHA>|g; s|^|BUILD-USER-ENV |" "$E"
+else
+    echo "SKIP module-ci.sh build mode: needs MODULE_CI_BUILD_TEST=1, root and a container"
+fi
+
 echo "passed $PASS failed $FAIL"
 [ "$FAIL" = 0 ]
