@@ -104,5 +104,15 @@ for bad in 'S=http://forge.example.invalid' 'S=https://forge.example.invalid/a|b
     check "refused: ${bad#?=}: no secrets written" [ ! -e "$W/home/key.jks" ]
 done
 
+# H4: release_files writes the in-app update feed as complete JSON with a final newline
+W="$SCRATCH/feed"; mkdir -p "$W/.forgejo"
+(cd "$W" && BUILT_VERSION=main-0123abc VERSION=main-0123abc-ci7 BODY="$(printf 'line one\nsha256 "x"')" \
+    ZIP_URL=https://forge.example.invalid/owner/HMA-OSS/releases/download/vmain-0123abc-ci7/m.zip \
+    bash -c 'set -euo pipefail; . "$1"; release_files; [ "$RELEASE_FILES" = .forgejo/app-update.json ]' _ "$CONF") > "$W/out" 2>&1
+check "release_files: exit 0" [ $? = 0 ]
+check "release_files: feed content" cmp -s "$W/.forgejo/app-update.json" <(printf '%s\n' '{' \
+    '  "tag_name": "main-0123abc",' '  "name": "HMA-OSS main-0123abc-ci7",' '  "body": "line one\nsha256 \"x\"",' \
+    '  "html_url": "https://forge.example.invalid/owner/HMA-OSS/releases/download/vmain-0123abc-ci7/m.zip"' '}')
+
 echo "passed $PASS failed $FAIL"
 [ "$FAIL" = 0 ]
