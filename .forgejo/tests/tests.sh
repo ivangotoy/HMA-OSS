@@ -57,5 +57,21 @@ check "failed gradle step: build fails" [ "$rc" != 0 ]
 check "failed gradle step: key.jks removed" [ ! -e "$W/home/key.jks" ]
 check "failed gradle step: local.properties removed" [ ! -e "$W/local.properties" ]
 
+# H3: the feed URL must be a plain https URL before it reaches sed and the Kotlin source
+make_work port; T_SERVER=https://forge.example.invalid:3000/sub run_build; rc=$?
+check "server URL with port and path: accepted" [ "$rc" = 0 ]
+check "server URL with port and path: feed URL" \
+    grep -qF '"https://forge.example.invalid:3000/sub/owner/HMA-OSS/raw/branch/main/.forgejo/app-update.json"' "$W/$CONSTS"
+n=0
+for bad in 'S=http://forge.example.invalid' 'S=https://forge.example.invalid/a|b' 'S=https://forge.example.invalid/a&b' \
+           'S=https://forge.example.invalid/"x' 'S=https://forge.example.invalid/$x' 'S=https://forge.example.invalid/' \
+           'R=owner/HMA-OSS"' 'R=owner/a/b' 'R=owner'; do
+    n=$((n + 1)); make_work "bad$n"
+    if [ "${bad%%=*}" = S ]; then T_SERVER="${bad#S=}" run_build; else T_REPO="${bad#R=}" run_build; fi; rc=$?
+    check "refused: ${bad#?=}" [ "$rc" != 0 ]
+    check "refused: ${bad#?=}: AppConstants unchanged" grep -qxF "$UPSTREAM_LINE" "$W/$CONSTS"
+    check "refused: ${bad#?=}: no secrets written" [ ! -e "$W/home/key.jks" ]
+done
+
 echo "passed $PASS failed $FAIL"
 [ "$FAIL" = 0 ]
