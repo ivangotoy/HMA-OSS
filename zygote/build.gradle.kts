@@ -106,7 +106,7 @@ androidComponents {
         val variantLowered = variant.name.lowercase(Locale.ROOT)
 
         val managerApkFile = rootProject.layout.projectDirectory.file(
-            "app/build/outputs/apk/$variantLowered/${rootProject.name}-$appVerName-$variantLowered.apk"
+            "app/build/outputs/apk/$variantLowered/${rootProject.name}-${appVerName.replace("/", "_")}-$variantLowered.apk"
         )
 
         val copyManagerApp = tasks.register<CopyManagerAppTask>("copy${variantCapped}ManagerApp") {
@@ -147,7 +147,7 @@ zygisk {
     author = "frknkrc44"
     description = "A Zygisk backend for HMA-OSS"
     entrypoint = "org.frknkrc44.hma_oss.zygote.ZygoteEntry"
-    archiveName = "${rootProject.name}-ZYGISK-${android.defaultConfig.versionName}"
+    archiveName = "${rootProject.name}-ZYGISK-${android.defaultConfig.versionName!!.replace("/", "_")}"
     updateJson = "https://furkank.net/hma_oss_update_checker.json"
     isAddVariantToArchiveName = true
 }
