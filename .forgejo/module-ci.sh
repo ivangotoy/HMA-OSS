@@ -63,9 +63,11 @@ if [ "$MODE" = build-user ]; then
 fi
 
 if [ "$MODE" = build ]; then
-    cd "$WORK"; load_conf .forgejo/module-ci.conf
+    cd "$WORK"
     rm -rf "$OUT"; mkdir -p "$OUT"
     git checkout -q -B main "$BASE_SHA"
+    # the config of the commit being built, not of whatever the caller had checked out
+    load_conf .forgejo/module-ci.conf
     printf '.ci-out/\n.ci-home/\n' >> .git/info/exclude
     SRC_SHA="$BASE_SHA" UP_SHA="" DESC=""
     if ! declare -F prebuilt >/dev/null && [ -n "$UPSTREAM_URL" ]; then

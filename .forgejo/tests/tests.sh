@@ -243,7 +243,7 @@ EOF
     git -C "$B/work" init -q && git -C "$B/work" add -A &&
         git -C "$B/work" -c user.name=t -c user.email=t@example.invalid commit -qm fixture
     sha="$(git -C "$B/work" rev-parse HEAD)"
-    cp -a "$B/work" "$B/work2"
+    cp -a "$B/work" "$B/work2"; cp -a "$B/work" "$B/work3"
     S1=made-up-keystore-b64 S2=made-up-alias S3='made-up store pw' S4=made-up-key-pw
     (cd "$B" && /usr/bin/env -i PATH="$B/shim:/usr/local/bin:/usr/bin:/bin" 'A-B=not-an-identifier' UNRELATED=x JAVA_HOME_21=/made-up/jdk21 \
         SERVER_URL=https://forge.example.invalid REPOSITORY=owner/fixture BASE_SHA="$sha" \
@@ -290,6 +290,21 @@ EOF
         sh -c 'grep -qx GIT_HTTP_LOW_SPEED_LIMIT=2048 "$1" && grep -qx GIT_HTTP_LOW_SPEED_TIME=90 "$1"' _ "$E"
     check "build mode, caller exports: OUT is the script's; WORK, BUILD_UID, SHELLOPTS not passed on" \
         sh -c 'grep -qx "OUT=$2/.ci-out" "$1" && ! grep -qE "^(WORK|BUILD_UID|SHELLOPTS)=" "$1"' _ "$E" "$B/work2"
+
+    # the root half reads the config of BASE_SHA, not of the commit the caller left checked out: the
+    # checked-out tip names an upstream that does not exist, BASE_SHA names none
+    printf "UPSTREAM_URL=/made-up/upstream.git\nUPSTREAM_BRANCH=main\n" >> "$B/work3/.forgejo/module-ci.conf"
+    git -C "$B/work3" -c user.name=t -c user.email=t@example.invalid commit -qam tip
+    : > "$B/argv.log"
+    (cd "$B" && /usr/bin/env -i PATH="$B/shim:/usr/local/bin:/usr/bin:/bin" JAVA_HOME_21=/made-up/jdk21 \
+        SERVER_URL=https://forge.example.invalid REPOSITORY=owner/fixture BASE_SHA="$sha" \
+        SIGN_KEYSTORE_B64="$S1" SIGN_KEY_ALIAS="$S2" SIGN_STORE_PASSWORD="$S3" SIGN_KEY_PASSWORD="$S4" \
+        bash "$B/work3/.forgejo/module-ci.sh" build "$B/work3") > "$B/build3.out" 2>&1
+    rc=$?
+    check "build mode, tip ahead of BASE_SHA: exit 0" [ "$rc" = 0 ]
+    [ "$rc" = 0 ] || sed "s/^/build3.out: /" "$B/build3.out"
+    check "build mode, tip ahead of BASE_SHA: BASE_SHA config used (no upstream merge)" \
+        sh -c "! grep -q \"merging \" \"\$1\" && [ \"\$(head -n1 \"\$2\")\" = \"\$3\" ]" _ "$B/build3.out" "$B/work3/.ci-out/src" "$sha"
 else
     echo "SKIP module-ci.sh build mode: needs MODULE_CI_BUILD_TEST=1, root and a container"
 fi
