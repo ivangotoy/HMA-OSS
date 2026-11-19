@@ -203,6 +203,7 @@ EOF
     git -C "$B/work" init -q && git -C "$B/work" add -A &&
         git -C "$B/work" -c user.name=t -c user.email=t@example.invalid commit -qm fixture
     sha="$(git -C "$B/work" rev-parse HEAD)"
+    cp -a "$B/work" "$B/work2"
     S1=made-up-keystore-b64 S2=made-up-alias S3='made-up store pw' S4=made-up-key-pw
     (cd "$B" && /usr/bin/env -i PATH="$B/shim:/usr/local/bin:/usr/bin:/bin" 'A-B=not-an-identifier' UNRELATED=x JAVA_HOME_21=/made-up/jdk21 \
         SERVER_URL=https://forge.example.invalid REPOSITORY=owner/fixture BASE_SHA="$sha" \
@@ -223,8 +224,32 @@ EOF
         grep -qx "REPOSITORY=owner/fixture" "$1" && grep -qx "BASE_SHA=$2" "$1"' _ "$E" "$sha"
     check "build mode: no other variable, invalid name or function leaks" \
         sh -c '[ -s "$1" ] && ! grep -qE "^(UNRELATED|A-B|BASH_FUNC_)" "$1"' _ "$E"
+    check "build mode: default git transfer limits reach build-user" \
+        sh -c 'grep -qx GIT_HTTP_LOW_SPEED_LIMIT=1024 "$1" && grep -qx GIT_HTTP_LOW_SPEED_TIME=60 "$1"' _ "$E"
     sed "s|$B|<B>|g; s|$sha|<SHA>|g; s|^|ARGV |" "$B/argv.log"
     sed "s|$B|<B>|g; s|$sha|<SHA>|g; s|^|BUILD-USER-ENV |" "$E"
+
+    # the caller may export names the script uses itself (WORK, OUT, BUILD_UID), a readonly variable
+    # (bash imports SHELLOPTS from the environment as readonly) and its own git transfer limits
+    SO=braceexpand:hashall:interactive-comments
+    check "build mode, caller exports: SHELLOPTS arrives readonly and exported" \
+        sh -c 'env -i SHELLOPTS="$1" bash -c "declare -p SHELLOPTS" | grep -q "^declare -rx SHELLOPTS="' _ "$SO"
+    : > "$B/argv.log"
+    (cd "$B" && /usr/bin/env -i PATH="$B/shim:/usr/local/bin:/usr/bin:/bin" JAVA_HOME_21=/made-up/jdk21 \
+        SERVER_URL=https://forge.example.invalid REPOSITORY=owner/fixture BASE_SHA="$sha" \
+        SIGN_KEYSTORE_B64="$S1" SIGN_KEY_ALIAS="$S2" SIGN_STORE_PASSWORD="$S3" SIGN_KEY_PASSWORD="$S4" \
+        WORK=/made-up/work OUT=/made-up/out BUILD_UID=4242 SHELLOPTS="$SO" \
+        GIT_HTTP_LOW_SPEED_LIMIT=2048 GIT_HTTP_LOW_SPEED_TIME=90 \
+        bash "$B/work2/.forgejo/module-ci.sh" build "$B/work2") > "$B/build2.out" 2>&1
+    rc=$?
+    check "build mode, caller exports: exit 0" [ "$rc" = 0 ]
+    [ "$rc" = 0 ] || sed 's/^/build2.out: /' "$B/build2.out"
+    E="$B/work2/.ci-out/build-user.env"
+    check "build mode, caller exports: build-user still uid 1000" grep -q '^setpriv --reuid=1000 .* build-user ' "$B/argv.log"
+    check "build mode, caller exports: caller's git transfer limits reach build-user" \
+        sh -c 'grep -qx GIT_HTTP_LOW_SPEED_LIMIT=2048 "$1" && grep -qx GIT_HTTP_LOW_SPEED_TIME=90 "$1"' _ "$E"
+    check "build mode, caller exports: OUT is the script's; WORK, BUILD_UID, SHELLOPTS not passed on" \
+        sh -c 'grep -qx "OUT=$2/.ci-out" "$1" && ! grep -qE "^(WORK|BUILD_UID|SHELLOPTS)=" "$1"' _ "$E" "$B/work2"
 else
     echo "SKIP module-ci.sh build mode: needs MODULE_CI_BUILD_TEST=1, root and a container"
 fi
