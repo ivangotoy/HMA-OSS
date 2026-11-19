@@ -142,6 +142,46 @@ check "release_files: feed content" cmp -s "$W/.forgejo/app-update.json" <(print
     '  "tag_name": "main-0123abc",' '  "name": "HMA-OSS main-0123abc-ci7",' '  "body": "line one\nsha256 \"x\"",' \
     '  "html_url": "https://forge.example.invalid/owner/HMA-OSS/releases/download/vmain-0123abc-ci7/m.zip"' '}')
 
+# N1: the workflow's build step runs the dispatched commit's module-ci.sh, even when main has moved on
+# since the dispatch. Its run block is taken from the workflow under test and run against a local fixture
+# "forge" whose main has a newer commit with a different module-ci.sh.
+if command -v git >/dev/null 2>&1; then
+    F="$SCRATCH/forge"; mkdir -p "$F/job"
+    BLOCK="$(python3 -I -c '
+import sys
+out, step, ind = [], False, None
+for line in open(sys.argv[1]).read().splitlines():
+    s = line.strip()
+    if s.startswith("- name: Build"):
+        step = True
+    elif step and ind is None and s == "run: |":
+        ind = -1
+    elif ind is not None:
+        if s and ind == -1:
+            ind = len(line) - len(line.lstrip())
+        if s and len(line) - len(line.lstrip()) < ind:
+            break
+        out.append(line[ind:] if s else "")
+print("\n".join(out))' "$ROOT/.forgejo/workflows/module-release.yml")"
+    check "workflow build step: run block found" grep -q 'module-ci.sh build src' <<< "$BLOCK"
+    (   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+        g() { git -C "$F/seed" -c user.name=t -c user.email=t@example.invalid "$@"; }
+        mkdir -p "$F/seed/.forgejo" && git init -q "$F/seed" && g symbolic-ref HEAD refs/heads/main &&
+        printf '%s\n' 'printf "one %s\n" "$(git -C "$2" rev-parse HEAD)" > "$MARK"' > "$F/seed/.forgejo/module-ci.sh" &&
+        g add -A && g commit -qm one && g rev-parse HEAD > "$F/base" &&
+        printf '%s\n' 'printf "two\n" > "$MARK"' > "$F/seed/.forgejo/module-ci.sh" &&
+        g commit -qam two && mkdir -p "$F/srv/owner" && git clone -q --bare "$F/seed" "$F/srv/owner/fixture.git" &&
+        cd "$F/job" && SERVER_URL="$F/srv" REPOSITORY=owner/fixture BASE_SHA="$(cat "$F/base")" MARK="$F/mark" \
+            bash -e -o pipefail -c "$BLOCK" ) > "$F/out" 2>&1
+    rc=$?
+    check "workflow build step: exit 0" [ "$rc" = 0 ]
+    [ "$rc" = 0 ] || sed 's/^/workflow.out: /' "$F/out"
+    check "workflow build step: runs the dispatched commit's module-ci.sh on its tree" \
+        grep -qxF "one $(cat "$F/base" 2>/dev/null)" "$F/mark"
+else
+    echo "SKIP workflow build step: no git"
+fi
+
 # module scripts (run by the root manager's sh): stubs for pm, am and ui_print
 ASSETS="$ROOT/zygote/src/main/assets"
 
