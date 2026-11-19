@@ -1,6 +1,6 @@
 {
-  "version": "main-0e351a4-ci3",
-  "versionCode": 7304717,
-  "zipUrl": "https://git.digtvbg.com/ivangotoy/HMA-OSS/releases/download/vmain-0e351a4-ci3/HMA-OSS-ZYGISK-vmain-0e351a4-ci3.zip",
-  "changelog": ""
+  "version": "main-a1c4502-ci4",
+  "versionCode": 7304719,
+  "zipUrl": "https://git.digtvbg.com/ivangotoy/HMA-OSS/releases/download/vmain-a1c4502-ci4/HMA-OSS-ZYGISK-vmain-a1c4502-ci4.zip",
+  "changelog": "https://git.digtvbg.com/ivangotoy/HMA-OSS/raw/commit/a1c45022d623e4ebfe3ad920b113309f3a3a3e0f/README.md"
 }

@@ -1,6 +1,6 @@
 {
-  "tag_name": "main-0e351a4",
-  "name": "HMA-OSS main-0e351a4-ci3",
-  "body": "Built by module-release #3 from 0e351a418201 (frknkrc44/HMA-OSS@future 6edc56a33e24).\nversionCode 7304717\nsha256 42831370aa1b85dd2afe14fb54b7d7a828a4f83438046d085ea59392e8fcf44b  HMA-OSS-ZYGISK-vmain-0e351a4-ci3.zip\nupdateJson https://git.digtvbg.com/ivangotoy/HMA-OSS/raw/branch/main/.forgejo/update.json",
-  "html_url": "https://git.digtvbg.com/ivangotoy/HMA-OSS/releases/download/vmain-0e351a4-ci3/HMA-OSS-ZYGISK-vmain-0e351a4-ci3.zip"
+  "tag_name": "main-a1c4502",
+  "name": "HMA-OSS main-a1c4502-ci4",
+  "body": "Built by module-release #4 from a1c45022d623 (frknkrc44/HMA-OSS@future 6edc56a33e24).\nversionCode 7304719\nsha256 1e454e92aed0fd7f767ddeda27cc0861b8669be900a5485788b7b11399214d69  HMA-OSS-ZYGISK-vmain-a1c4502-ci4.zip\nupdateJson https://git.digtvbg.com/ivangotoy/HMA-OSS/raw/branch/main/.forgejo/update.json",
+  "html_url": "https://git.digtvbg.com/ivangotoy/HMA-OSS/releases/download/vmain-a1c4502-ci4/HMA-OSS-ZYGISK-vmain-a1c4502-ci4.zip"
 }
