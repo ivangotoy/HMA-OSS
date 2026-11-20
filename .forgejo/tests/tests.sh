@@ -318,19 +318,23 @@ if command -v python3 >/dev/null 2>&1; then
     {
         echo 'set -euo pipefail'
         echo 'API=https://forge.invalid/api/v1/repos/example/mod RELEASE_ID=7 PUBLISHED=0 SRC_SHA=0123456789abcdef0123456789abcdef01234567'
+        echo 'DRAFT_REQUESTED=0 TAG=v9.9-ci7 REQ={}'
         echo 'AUTH_DIR=$(mktemp -d) AUTH_H=$AUTH_DIR/header; : > "$AUTH_H"'
         sed -n '/^log() {/p; /^die() {/p; /^jget() {/,/^print(d)/p; /^api() {/,/^}/p; /^cleanup() {/,/^}/p' "$ci"
         echo 'trap cleanup EXIT'
-        echo 'if [ "$1" = publish ]; then'
+        echo 'if [ "$1" = create ]; then RELEASE_ID=""'
+        sed -n '/^DRAFT_REQUESTED=1$/,/^RELEASE_ID="\$(api POST \/releases /p' "$ci"
+        echo 'elif [ "$1" = publish ]; then'
         sed -n '/^REQ="\$(python3 -I -c .import json,sys;print(json.dumps({"draft":False/,/^PUBLISHED=1$/p' "$ci"
         echo 'else die "upload failed"; fi'
     } > "$RC/rel.sh"
-    # fake curl: logs "METHOD URL"; PATCH exits $PATCH_RC; GET of the release answers draft=$DRAFT or fails (DRAFT=fail)
+    # fake curl: logs "METHOD URL"; POST exits $POST_RC, PATCH $PATCH_RC; GET of the release answers draft=$DRAFT or fails (DRAFT=fail)
     cat > "$RC/bin/curl" <<EOF
 #!/bin/sh
 m=GET; p=; for a in "\$@"; do [ "\$p" = -X ] && m=\$a; p=\$a; u=\$a; done
 echo "\$m \$u" >> "$RC/calls"
 case "\$m" in
+  POST) exit "\${POST_RC:-0}" ;;
   PATCH) exit "\${PATCH_RC:-0}" ;;
   GET) [ "\$DRAFT" = fail ] && exit 22; printf '{"id": 7, "draft": %s}' "\$DRAFT" ;;
 esac
@@ -355,6 +359,12 @@ EOF
     rel publish DRAFT=false; rc=$?
     check "release cleanup: good publish: exit 0" [ "$rc" = 0 ]
     check "release cleanup: good publish: no DELETE" sh -c '! grep -q "^DELETE " "$1"' _ "$RC/calls"
+    rel create POST_RC=28 DRAFT=true; rc=$?
+    check "release cleanup: failed or unanswered draft request: job fails" [ "$rc" != 0 ]
+    check "release cleanup: failed or unanswered draft request: POST sent, no DELETE" \
+        sh -c 'grep -q "^POST " "$1" && ! grep -q "^DELETE " "$1"' _ "$RC/calls"
+    check "release cleanup: failed or unanswered draft request: tag logged for a check by hand" \
+        sh -c 'grep -q "the draft request for v9.9-ci7 failed or its reply was lost" "$1" && ! grep -q "unbound variable" "$1"' _ "$RC/err"
 else
     echo "SKIP release cleanup: no python3"
 fi
