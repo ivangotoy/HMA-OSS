@@ -196,7 +196,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings), PreferenceFragmen
         }
     }
 
-    class DataIsolationPreferenceFragment(private val preferenceDataStore: PreferenceDataStore) : EdgeToEdgePreferenceFragment() {
+    class DataIsolationPreferenceFragment(private val preferenceDataStore: PreferenceDataStore = SettingsPreferenceDataStore()) : EdgeToEdgePreferenceFragment() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             preferenceManager.preferenceDataStore = preferenceDataStore
             setPreferencesFromResource(R.xml.settings_data_isolation, rootKey)
@@ -260,7 +260,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings), PreferenceFragmen
         }
     }
 
-    class LoggingPreferenceFragment(private val preferenceDataStore: PreferenceDataStore) : EdgeToEdgePreferenceFragment() {
+    class LoggingPreferenceFragment(private val preferenceDataStore: PreferenceDataStore = SettingsPreferenceDataStore()) : EdgeToEdgePreferenceFragment() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             preferenceManager.preferenceDataStore = preferenceDataStore
             setPreferencesFromResource(R.xml.settings_logging, rootKey)
