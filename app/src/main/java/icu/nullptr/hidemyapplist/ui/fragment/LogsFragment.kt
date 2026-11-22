@@ -27,9 +27,12 @@ import java.util.Date
 import java.util.Locale
 
 class LogsFragment(
-    private val loadingIndicator: View,
-    private val toolbar: Toolbar,
+    loadingIndicator: View? = null,
+    toolbar: Toolbar? = null,
 ) : Fragment(R.layout.fragment_logs) {
+    // re-created by the FragmentManager without arguments: the views of the tabbed page that holds it
+    private val loadingIndicator by lazy { loadingIndicator ?: requireParentFragment().requireView().findViewById<View>(R.id.loading_indicator) }
+    private val toolbar by lazy { toolbar ?: requireParentFragment().requireView().findViewById<Toolbar>(R.id.toolbar) }
 
     private val binding by viewBinding(FragmentLogsBinding::bind)
     private val adapter by lazy { LogAdapter(requireContext()) }
