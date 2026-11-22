@@ -340,9 +340,9 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
         }
     }
 
-    class AppSpoofingPreferenceFragment(private val preferenceDataStore: PreferenceDataStore) : BaseAppSettingsPreferenceFragment() {
+    class AppSpoofingPreferenceFragment(private val preferenceDataStore: PreferenceDataStore? = null) : BaseAppSettingsPreferenceFragment() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            preferenceManager.preferenceDataStore = preferenceDataStore
+            preferenceManager.preferenceDataStore = preferenceDataStore ?: AppPreferenceDataStore(pack)
             setPreferencesFromResource(R.xml.app_settings_spoofing_v2, rootKey)
 
             findPreference<SwitchPreferenceCompat>("hideInstallationSource")?.setOnPreferenceChangeListener { _, _ ->
@@ -360,7 +360,7 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
         }
     }
 
-    class TemplateConfigPreferenceFragment(private val preferenceDataStore: PreferenceDataStore) : BaseAppSettingsPreferenceFragment() {
+    class TemplateConfigPreferenceFragment(private val preferenceDataStore: PreferenceDataStore? = null) : BaseAppSettingsPreferenceFragment() {
         private fun updateApplyTemplates(useWhitelist: Boolean = pack.config.useWhitelist) {
             findPreference<Preference>("applyTemplates")?.apply {
                 title = getString(
@@ -409,7 +409,7 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
 
         @SuppressLint("DiscouragedApi")
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            preferenceManager.preferenceDataStore = preferenceDataStore
+            preferenceManager.preferenceDataStore = preferenceDataStore ?: AppPreferenceDataStore(pack)
             setPreferencesFromResource(R.xml.app_settings_template_config_v2, rootKey)
 
             findPreference<ListPreference>("useWhiteList")?.apply {
