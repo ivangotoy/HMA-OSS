@@ -53,6 +53,8 @@ pack_paths() { (cd "$WORK" && zip -qr9 -X "$OUT/module.zip" "$@" -x '*/.gitkeep'
 load_conf() {
     UPSTREAM_URL="" UPSTREAM_BRANCH="" ZIP_PREFIX="${REPOSITORY#*/}" VERSION_CODE_FLOOR=0 VERSION_CODE_OFFSET=0
     UPDATE_JSON_PATH=".forgejo/update.json" SYNC_ROOT_PROP="" CHANGELOG_PATH=""
+    # the hooks come from the conf only, never from functions the caller exported
+    unset -f build prebuilt release_files
     . "$1"
 }
 
@@ -90,6 +92,7 @@ if [ "$MODE" = build ]; then
     mkdir -p "$WORK/.ci-home"
     chown -R "$BUILD_UID:$BUILD_UID" "$WORK" "$OUT"
     log "building $SRC_SHA as uid $BUILD_UID"
+    build_rc=0
     # The build user gets exactly the variables below. The signing secrets go by environment only,
     # never as argv (an `env -i NAME=value` argv is readable in /proc by other local users): take
     # the export off every other variable (not unset: the caller may export a name this script uses,
@@ -114,7 +117,7 @@ if [ "$MODE" = build ]; then
     ) || build_rc=$?
     # nothing the build user started outlives the build, whether it failed or not
     setpriv --reuid="$BUILD_UID" --regid="$BUILD_UID" --clear-groups kill -9 -1 2>/dev/null || true
-    [ "${build_rc:-0}" = 0 ] || die "build failed"
+    [ "$build_rc" = 0 ] || die "build failed"
     [ -f "$OUT/module.zip" ] || die "build left no $OUT/module.zip"
     [ -f "$OUT/upstream-desc" ] && DESC="$(head -n1 "$OUT/upstream-desc")"
     printf '%s\n' "$DESC" > "$OUT/desc"

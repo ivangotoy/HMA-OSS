@@ -369,6 +369,29 @@ else
     echo "SKIP release cleanup: no python3"
 fi
 
+# load_conf (cut from module-ci.sh): build, prebuilt and release_files come from the conf only. bash
+# imports functions the caller exports, and an inherited prebuilt() would skip the upstream merge.
+LC="$SCRATCH/loadconf"; mkdir -p "$LC"
+{ echo 'set -euo pipefail'; sed -n '/^load_conf() {/,/^}/p' "$ROOT/.forgejo/module-ci.sh"
+  cat <<'EOF'
+REPOSITORY=owner/repo; load_conf "$1"
+for f in build prebuilt release_files; do declare -F "$f" >/dev/null && printf "%s " "$f"; done; echo
+EOF
+} > "$LC/lc.sh"
+printf 'build() { :; }\n' > "$LC/conf-build"
+printf 'build() { :; }\nprebuilt() { :; }\n' > "$LC/conf-prebuilt"
+cat > "$LC/caller.sh" <<'EOF'
+build() { :; }; prebuilt() { :; }; release_files() { :; }
+export -f build prebuilt release_files
+exec bash "$1" "$2"
+EOF
+lc() { bash "$LC/caller.sh" "$LC/lc.sh" "$1" 2>&1; }
+check "load_conf: load_conf found in module-ci.sh" grep -q '^load_conf() {' "$LC/lc.sh"
+got="$(lc "$LC/conf-build")"
+check "load_conf: functions the caller exports are dropped, the conf's build() kept (got: $got)" [ "$got" = "build " ]
+got="$(lc "$LC/conf-prebuilt")"
+check "load_conf: the conf's own prebuilt() still counts (got: $got)" [ "$got" = "build prebuilt " ]
+
 # build step (module-ci.sh build): whatever the build user started is killed after the build,
 # failed or not. setpriv and chown are stubs: the stub records a kill and never runs it (here the
 # test user may well be the build uid, and `kill -9 -1` would end this session).
@@ -384,11 +407,13 @@ exec "$@"
 EOF
     printf '#!/bin/sh\nexit 0\n' > "$BW/bin/chown"
     chmod 755 "$BW/bin/setpriv" "$BW/bin/chown"
-    # build_step <ok|failed>: a work tree with this module-ci.sh and a conf whose build() passes or fails
+    # build_step <ok|failed> [NAME=value ...]: a work tree with this module-ci.sh and a conf whose build()
+    # passes or fails; the NAME=value pairs are in the environment module-ci.sh is started with
     build_step() {
-        _b="$BW/$1"; mkdir -p "$_b/.forgejo"
+        _k="$1"; shift
+        _b="$BW/$_k${1:+-caller}"; mkdir -p "$_b/.forgejo"
         cp "$ROOT/.forgejo/module-ci.sh" "$_b/.forgejo/"
-        if [ "$1" = ok ]; then
+        if [ "$_k" = ok ]; then
             printf 'build() { echo zip > "$OUT/module.zip"; }\n' > "$_b/.forgejo/module-ci.conf"
         else
             printf 'build() { echo "stub build failed" >&2; return 1; }\n' > "$_b/.forgejo/module-ci.conf"
@@ -396,22 +421,24 @@ EOF
         (cd "$_b" && git init -q && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -qm t) > /dev/null 2>&1
         : > "$_b/setpriv.log"
         if [ "$(PATH="$BW/bin:$PATH" command -v setpriv)" != "$BW/bin/setpriv" ]; then
-            no "build step $1: setpriv stub not first on PATH, not run"; return
+            no "build step $_k: setpriv stub not first on PATH, not run"; return
         fi
         _rc=0
         (cd "$_b" && env PATH="$BW/bin:$PATH" SETPRIV_LOG="$_b/setpriv.log" SERVER_URL=https://forge.invalid \
-            REPOSITORY=owner/repo BASE_SHA="$(git rev-parse HEAD)" bash .forgejo/module-ci.sh build "$_b") > "$_b/out.log" 2>&1 || _rc=$?
-        if [ "$1" = ok ]; then _want=0; [ -f "$_b/.ci-out/module.zip" ] && _res=zip || _res=missing
+            REPOSITORY=owner/repo BASE_SHA="$(git rev-parse HEAD)" "$@" bash .forgejo/module-ci.sh build "$_b") > "$_b/out.log" 2>&1 || _rc=$?
+        if [ "$_k" = ok ]; then _want=0; [ -f "$_b/.ci-out/module.zip" ] && _res=zip || _res=missing
         else _want=1; grep -q "stub build failed" "$_b/out.log" && _res=stub-failure || _res=missing; fi
         if [ "$([ "$_rc" = 0 ] && echo 0 || echo 1)" = "$_want" ] && [ "$_res" != missing ] \
             && ! grep -q "unbound variable" "$_b/out.log" && grep -q 'kill-requested .*--reuid=1000 .*kill -9 -1' "$_b/setpriv.log"; then
-            ok "module-ci.sh build step $1: exit as expected, build user's processes killed"
+            ok "module-ci.sh build step $_k${1:+ (caller exports $*)}: exit as expected, build user's processes killed"
         else
-            no "module-ci.sh build step $1 (rc=$_rc, $_res, kills: $(grep -c kill-requested "$_b/setpriv.log")): $(tail -n 2 "$_b/out.log" | tr '\n' ' ')"
+            no "module-ci.sh build step $_k${1:+ (caller exports $*)} (rc=$_rc, $_res, kills: $(grep -c kill-requested "$_b/setpriv.log")): $(tail -n 2 "$_b/out.log" | tr '\n' ' ')"
         fi
     }
     build_step ok
     build_step failed
+    # a build_rc the caller exports is not taken for the build's exit status
+    build_step ok build_rc=1
 fi
 
 echo "passed $PASS failed $FAIL"
