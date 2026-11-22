@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generic KernelSU module release pipeline (identical in every module repo).
+# KernelSU module release pipeline. This repo keeps its own copy: it is not kept in sync with other module repos.
 #
 #   module-ci.sh build <workdir>    no forge token: merge upstream, build the zip
 #                                   (the build runs as an unprivileged user)
