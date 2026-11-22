@@ -98,6 +98,7 @@
     <string name="app_preset_using">Se folosesc %d presetări</string>
     <string name="app_settings_preset_using">Se folosesc %d presetări pentru setări</string>
     <string name="app_settings_template_using">Folosind șabloanele %d pentru setări</string>
+    <string name="app_extra_settings_count">%d additional settings applied</string>
     <string name="app_extra_apps_visible_count">%d extra aplicații vizibile</string>
     <string name="app_extra_apps_invisible_count">%d extra aplicații invizibile</string>
     <string name="app_warning_risky_package_title">Pachet cu risc</string>
@@ -165,7 +166,6 @@
     <string name="settings_permission_denied">Permisiune refuzată</string>
     <string name="settings_force_mount_data">Forțează izolarea datelor pentru toate aplicațiile</string>
     <string name="settings_force_mount_data_summary">Izolarea datelor este dezactivată în mod implicit pentru aplicațiile  cu API-ul țintă mai mic de 30</string>
-    <string name="settings_detail_log">Detalii jurnal pentru depanare</string>
     <string name="settings_max_log_size">Dimensiunile buffer-ului jurnalului</string>
     <string name="settings_hide_icon">Ascunde pictograma modului in Lansator</string>
     <string name="settings_hide_icon_summary">Puteți deschide in continuare aplicația în managerul superutilizatorului</string>
@@ -178,7 +178,6 @@
     <string name="settings_clear_uninstalled_app_configs_summary">Această opțiune că permite să creați o cofigurație fără resturi, dar va trebui să reconfigurați aplicațiile mereu cand le reinstalați.</string>
     <string name="settings_no_undone_warning">Această acțiune nu poate fi anulată.</string>
     <string name="settings_launcher_icon">Pictogramă lansator</string>
-    <string name="settings_error_only_log">Jurnal \'doar-erori\'.</string>
     <string name="settings_disable_hooks">Dezactivează funcții</string>
     <string name="settings_disable_hooks_summary">Puteți dezactiva unele funcții atunci când intră în conflict cu alte module</string>
     <string name="settings_enable_internet">Activați conexiunea la internet</string>
