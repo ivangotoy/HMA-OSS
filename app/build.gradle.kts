@@ -113,6 +113,9 @@ androidComponents {
 android {
     namespace = rootProject.extra["appPackageName"] as String
 
+    // JVM unit tests run against android.jar stubs
+    testOptions.unitTests.isReturnDefaultValues = true
+
     defaultConfig {
         buildConfigField("String[]", "SUPPORTED_LOCALES", generateSupportedLocales())
     }
@@ -174,6 +177,7 @@ fun generateSupportedLocales(): String {
 }
 
 dependencies {
+    testImplementation(libs.junit)
     implementation(projects.common)
 
     implementation(libs.androidx.navigation.fragment.ktx)
