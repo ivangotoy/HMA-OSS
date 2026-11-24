@@ -81,6 +81,8 @@ class AppPresets private constructor() {
             }
 
             if ((packageNames - allAppsCache).isEmpty()) {
+                // forget removed apps, or a later reinstall is taken as already known
+                allAppsCache.sync(packageNames)
                 return
             }
         } else {
