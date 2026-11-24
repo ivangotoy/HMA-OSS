@@ -568,6 +568,13 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
 
             config.set(newConfig)
 
+            // the rename replaced the watched file: watch the new one (a watch added while there was
+            // no config.json yet watches nothing either)
+            if (this::configFileListener.isInitialized) {
+                configFileListener.stopWatching()
+                configFileListener.startWatching()
+            }
+
             // remove filter counts for apps if they are not in config
             dataHolder.removeFilterCountsNotIn(newConfig.scope.keys)
 
