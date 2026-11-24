@@ -103,12 +103,12 @@ class SettingsTemplateConfFragment : Fragment(R.layout.fragment_template_setting
             navigate(R.id.nav_scope, args.toBundle())
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.targetSettingList.collect {
                 binding.targetApps.text = getString(R.string.template_setting_count, it.size)
             }
         }
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.appliedAppList.collect {
                 binding.appliedApps.text = getString(R.string.template_applied_count, it.size)
             }

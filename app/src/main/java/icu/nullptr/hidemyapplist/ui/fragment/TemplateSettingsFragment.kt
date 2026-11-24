@@ -99,7 +99,7 @@ class TemplateSettingsFragment : Fragment(R.layout.fragment_template_settings) {
             navigate(R.id.nav_scope, args.toBundle())
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.targetAppList.collect {
                 val fmt =
                     if (viewModel.isWhiteList) R.string.template_apps_visible_count
@@ -107,7 +107,7 @@ class TemplateSettingsFragment : Fragment(R.layout.fragment_template_settings) {
                 binding.targetApps.text = String.format(getString(fmt), it.size)
             }
         }
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.appliedAppList.collect {
                 binding.appliedApps.text = String.format(getString(R.string.template_applied_count), it.size)
             }

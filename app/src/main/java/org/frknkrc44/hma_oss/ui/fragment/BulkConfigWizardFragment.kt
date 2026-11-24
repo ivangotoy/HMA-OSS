@@ -85,13 +85,13 @@ class BulkConfigWizardFragment : Fragment(R.layout.fragment_bulk_config_wizard) 
             }
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.appliedAppList.collect {
                 binding.appliedApps.text = String.format(getString(R.string.template_applied_count), it.size)
             }
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.appConfig.collect {
                 binding.targetAppSettings.subText = getString(
                     if (it != null) R.string.enabled
