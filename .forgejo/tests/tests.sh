@@ -217,6 +217,21 @@ STUB_PRESENT=1 action; rc=$?
 check "action: already installed: exit 0" [ "$rc" = 0 ]
 check "action: already installed: launched, no install" sh -c '! grep -q "^pm install" "$1" && grep -q "^am start" "$1"' _ "$M/log"
 
+# J37: hmaoss.sh (boot-completed) resets module.prop from module.prop.bak by renaming a full copy over
+# it: a copy in place leaves an empty or partial module.prop for the root manager if the boot is cut
+# short during the write
+HM="$SCRATCH/hmaoss"; mkdir -p "$HM/mod"
+printf 'id=hma_oss_zygisk\ndescription=A made-up module\n' > "$HM/mod/module.prop.bak"
+printf 'id=hma_oss_zygisk\ndescription=[status] A made-up module\n' > "$HM/mod/module.prop"
+: > "$HM/mod/disable"   # disabled: no background status refresh
+sed "s|^MODDIR=.*|MODDIR=$HM/mod|" "$ASSETS/hmaoss.sh" > "$HM/hmaoss.sh"
+ino="$(stat -c %i "$HM/mod/module.prop")"
+sh "$HM/hmaoss.sh" > "$HM/out" 2>&1; rc=$?
+check "hmaoss: exit 0" [ "$rc" = 0 ]
+check "hmaoss: module.prop reset from module.prop.bak" cmp -s "$HM/mod/module.prop" "$HM/mod/module.prop.bak"
+check "hmaoss: module.prop replaced by a rename, not rewritten in place" [ "$(stat -c %i "$HM/mod/module.prop")" != "$ino" ]
+check "hmaoss: no temp file left" [ ! -e "$HM/mod/module.prop.tmp" ]
+
 # M1: module-ci.sh build mode hands the signing secrets to the build user as environment, never as
 # argv. Build mode chowns the tree, drops to uid 1000 and then runs `kill -9 -1` as uid 1000, so this
 # runs only when asked for (MODULE_CI_BUILD_TEST=1), as root, inside a container.

@@ -15,7 +15,9 @@ ACTION_BAK="$MODDIR/action.sh.bak"
 DISABLE="$MODDIR/disable"
 
 # INFO: Resets HMA-OSS's module.prop to its default state which is saved upon installation.
-cp "$MODDIR/module.prop.bak" "$MODDIR/module.prop"
+#         A full copy is renamed over it, so module.prop is never left half written.
+cp "$MODDIR/module.prop.bak" "$MODDIR/module.prop.tmp"
+mv -f "$MODDIR/module.prop.tmp" "$MODDIR/module.prop"
 
 if [ -f "$DISABLE" ]; then
     if [ -f "$ACTION" ] && [ ! -f "$ACTION_BAK" ]; then
