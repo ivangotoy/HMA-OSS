@@ -75,7 +75,8 @@ fun Fragment.setupToolbar(
         toolbar.menu.clear()
         toolbar.inflateMenu(menuRes)
         toolbar.setOnMenuItemClickListener(menuProvider::onMenuItemSelected)
-        requireActivity().addMenuProvider(menuProvider)
+        // removed with the view; without an owner every call kept its fragment for the activity's life
+        requireActivity().addMenuProvider(menuProvider, viewLifecycleOwner)
         menuProvider.onPrepareMenu(toolbar.menu)
     }
 }
