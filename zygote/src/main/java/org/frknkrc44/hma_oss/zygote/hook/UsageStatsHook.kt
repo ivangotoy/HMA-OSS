@@ -4,6 +4,7 @@ import android.app.usage.UsageEvents
 import android.app.usage.UsageStats
 import android.content.pm.ParceledListSlice
 import android.os.Build
+import com.v7878.unsafe.Reflection.getDeclaredField
 import org.frknkrc44.hma_oss.zygote.service.ReturnValue
 import org.frknkrc44.hma_oss.zygote.util.CollectionUtils.firstOrNullWithType
 import org.frknkrc44.hma_oss.zygote.util.CollectionUtils.lastOrNullWithType
@@ -143,9 +144,14 @@ class UsageStatsHook : IFrameworkHook {
 
         // task roots are sent only when the service included them; a kept event must not name a hidden one
         val includeTaskRoots = getObjectField(events, "mIncludeTaskRoots") as? Boolean ?: false
+        val taskRootFields = if (includeTaskRoots) {
+            arrayOf("mTaskRootPackage", "mTaskRootClass").map { getDeclaredField(UsageEvents.Event::class.java, it) }
+        } else {
+            emptyList()
+        }
         val filtered = eventsList.filterTo(mutableListOf()) {
             !service.shouldHide(caller, it.packageName) && !(includeTaskRoots &&
-                    service.shouldHide(caller, getObjectField(it, "mTaskRootPackage") as? String))
+                    service.shouldHide(caller, taskRootFields[0].get(it) as? String))
         }
 
         val count = eventsList.size - filtered.size
@@ -153,13 +159,10 @@ class UsageStatsHook : IFrameworkHook {
             // a new object, not a new list in the old one: its event count and the string pool sent
             // with the events have to match the kept events (every string they reference, no other)
             val pool = sortedSetOf<String>()
-            val fields = if (includeTaskRoots) {
-                arrayOf("mPackage", "mClass", "mTaskRootPackage", "mTaskRootClass")
-            } else {
-                arrayOf("mPackage", "mClass")
-            }
             filtered.forEach { event ->
-                fields.forEach { field -> (getObjectField(event, field) as? String)?.let(pool::add) }
+                event.packageName?.let(pool::add)
+                event.className?.let(pool::add)
+                taskRootFields.forEach { field -> (field.get(event) as? String)?.let(pool::add) }
             }
             val rebuilt = UsageEvents::class.java.getConstructor(
                 List::class.java,
