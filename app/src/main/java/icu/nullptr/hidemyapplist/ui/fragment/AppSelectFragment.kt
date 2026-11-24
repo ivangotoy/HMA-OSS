@@ -6,6 +6,8 @@ import android.view.View
 import android.widget.TextView
 import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -136,16 +138,21 @@ abstract class AppSelectFragment : Fragment(R.layout.fragment_app_select) {
             }
         }
 
-        adapter.registerAdapterDataObserver(
-            EmptyDataObserver(
-                binding.list,
-                binding.listEmptyContainer.root
-            )
+        // the adapter outlives this view: tie the observer and the collector to the view
+        val emptyDataObserver = EmptyDataObserver(
+            binding.list,
+            binding.listEmptyContainer.root
         )
+        adapter.registerAdapterDataObserver(emptyDataObserver)
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                adapter.unregisterAdapterDataObserver(emptyDataObserver)
+            }
+        })
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             PackageHelper.isRefreshing
-                .flowWithLifecycle(lifecycle)
+                .flowWithLifecycle(viewLifecycleOwner.lifecycle)
                 .collect { isRefreshing ->
                     binding.swipeRefresh.isRefreshing = isRefreshing
 
