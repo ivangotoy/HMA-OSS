@@ -57,24 +57,29 @@ class BackupRestoreFragment : Fragment(R.layout.fragment_backup_restore) {
     private val backupSAFLauncher =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) backup@{ uri ->
             if (uri == null) return@backup
-            val output = contentResolver.openOutputStream(uri)
 
-            if (output == null) showToast(R.string.home_export_failed)
-            else {
-                clearNotImportedItems {
-                    if (!includeSettings) {
-                        val newConfig = JsonConfig(CONFIG_VERSION_NO_SETTINGS)
-                        newConfig.templates.putAll(importedConfig.templates)
-                        newConfig.settingsTemplates.putAll(importedConfig.settingsTemplates)
-                        newConfig.scope.putAll(importedConfig.scope)
-                        importedConfig = newConfig
+            clearNotImportedItems {
+                if (!includeSettings) {
+                    val newConfig = JsonConfig(CONFIG_VERSION_NO_SETTINGS)
+                    newConfig.templates.putAll(importedConfig.templates)
+                    newConfig.settingsTemplates.putAll(importedConfig.settingsTemplates)
+                    newConfig.scope.putAll(importedConfig.scope)
+                    importedConfig = newConfig
+                }
+
+                // opened here, not before trimming: this callback may run later or not at all
+                try {
+                    val output = contentResolver.openOutputStream(uri)
+                    if (output == null) {
+                        showToast(R.string.home_export_failed)
+                    } else {
+                        output.use { it.write(importedConfig.toString().toByteArray()) }
+                        showToast(R.string.home_exported)
+                        navController.navigateUp()
                     }
-
-                    showToast(R.string.home_exported)
-                    output.write(importedConfig.toString().toByteArray())
-                    output.close()
-
-                    navController.navigateUp()
+                } catch (_: Exception) {
+                    // the document provider failed to open or write the file
+                    showToast(R.string.home_export_failed)
                 }
             }
         }
