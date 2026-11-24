@@ -141,7 +141,7 @@ class AboutFragment : Fragment(R.layout.fragment_about) {
             backgroundTintList = tint
             clipToOutline = true
 
-            val jsonObj = JSONObject(String(requireContext().assets.open("translators.json").readBytes()))
+            val jsonObj = JSONObject(String(requireContext().assets.open("translators.json").use { it.readBytes() }))
             val jsonKeys = jsonObj.keys().asSequence().sortedWith { a, b -> a.lowercase().compareTo(b.lowercase()) }
             for (name in jsonKeys) {
                 val avatarUrl = jsonObj.getString(name)
