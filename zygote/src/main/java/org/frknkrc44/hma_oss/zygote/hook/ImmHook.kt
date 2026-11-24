@@ -261,9 +261,9 @@ class ImmHook : IFrameworkHook {
 
         logD(TAG) { "@getInputMethodList: spoofed input method for $caller" }
 
-        val calculatedList = inList.filter { imInfo ->
-            service.shouldHide(caller, imInfo.packageName)
-        }
+        // only the fake keyboard, as getEnabledInputMethodList returns: keeping the IMEs for which
+        // shouldHide is true listed exactly the hidden ones where the service does not filter (10-13)
+        val calculatedList = emptyList<InputMethodInfo>()
 
         logV(TAG) { "@getInputMethodList*calculator: $callingUid - Calculated: ${calculatedList.map { it.component }}" }
 
