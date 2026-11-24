@@ -49,6 +49,7 @@ import org.frknkrc44.hma_oss.zygote.hook.PmsPackageEventsHook
 import org.frknkrc44.hma_oss.zygote.hook.UsageStatsHook
 import org.frknkrc44.hma_oss.zygote.hook.ZygoteHook
 import org.frknkrc44.hma_oss.zygote.util.ActivityManagerUtils
+import org.frknkrc44.hma_oss.zygote.util.FileWriteUtils.replaceWith
 import org.frknkrc44.hma_oss.zygote.util.Logcat.logD
 import org.frknkrc44.hma_oss.zygote.util.Logcat.logE
 import org.frknkrc44.hma_oss.zygote.util.Logcat.logI
@@ -243,7 +244,7 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
             )
 
             ensureFileIsRW(moduleStatusFile, true)
-            moduleStatusFile.writeText(encoder.encodeToString(json))
+            check(moduleStatusFile.replaceWith(encoder.encodeToString(json).toByteArray())) { "rename failed" }
         } catch (cause: Throwable) {
             logE(TAG, cause) { "An error occurred while writing the status JSON" }
         }
@@ -557,9 +558,7 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
             ensureFileIsRW(configFile, true)
             writtenByManager = true
 
-            val tempConfig = File("$configFile.tmp")
-            tempConfig.writeText(json)
-            if (!tempConfig.renameTo(configFile)) {
+            if (!configFile.replaceWith(json.toByteArray())) {
                 logE(TAG) { "Sync config failed due to I/O issues, the old config remained active" }
                 return
             }
@@ -588,7 +587,7 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
         synchronized(configLock) {
             try {
                 ensureFileIsRW(filterCountFile, true)
-                filterCountFile.writeText(detailedFilterStats)
+                check(filterCountFile.replaceWith(detailedFilterStats.toByteArray(), sync = false)) { "rename failed" }
                 logD(TAG) { "Filter count synced" }
             } catch (cause: Throwable) {
                 logE(TAG, cause) { "An error occurred while writing filter count" }
@@ -851,9 +850,7 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
         val dataFile = getDataFile() ?: return false
 
         val bytes = dataFile.readBytes()
-        synchronized(configLock) { configFile.writeBytes(bytes) }
-
-        return true
+        return synchronized(configLock) { configFile.replaceWith(bytes) }
     }
 
     override fun reloadConfigFromFile() = synchronized(configLock) {
