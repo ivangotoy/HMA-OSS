@@ -28,5 +28,6 @@ dev-androidbroadcast-vbpd-reflection = { module = "dev.androidbroadcast.vbpd:vbp
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.11.0" }
 material = { module = "com.google.android.material:material", version.ref = "material" }
 io-github-vova7878-r8annotations = { module = "io.github.vova7878:R8Annotations", version.ref = "r8_annotations" }
+junit = { module = "junit:junit", version = "4.13.2" }
 io-coilkt-coil3-coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }
 io-coilkt-coil3-coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }

@@ -12,6 +12,9 @@ val appVerCode = rootProject.extra["appVerCode"] as Int
 android {
     namespace = "$appPackageName.common"
 
+    // JVM unit tests run against android.jar stubs
+    testOptions.unitTests.isReturnDefaultValues = true
+
     buildFeatures {
         aidl = true
         buildConfig = true
@@ -34,4 +37,7 @@ dependencies {
     api(libs.kotlinx.serialization.json)
 
     compileOnly(projects.stub)
+
+    testImplementation(libs.junit)
+    testImplementation(projects.stub)
 }
