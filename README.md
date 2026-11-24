@@ -52,3 +52,7 @@ You can contribute translation [here](https://crowdin.com/project/frknkrc44-hma-
 
 ## Update log
 [Reference to the commits page](https://github.com/frknkrc44/HMA-OSS/commits)
+
+## More KernelSU modules
+
+Check out my other great KernelSU modules here: https://git.digtvbg.com/explore/repos?q=kernelsu-module&topic=1
