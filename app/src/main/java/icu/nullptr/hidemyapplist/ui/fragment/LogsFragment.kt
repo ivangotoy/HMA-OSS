@@ -45,9 +45,12 @@ class LogsFragment(
                 showToast(R.string.logs_empty)
                 return@save
             }
-            contentResolver.openOutputStream(uri).use { output ->
-                if (output == null) showToast(R.string.home_export_failed)
-                else {
+            try {
+                contentResolver.openOutputStream(uri).use { output ->
+                    if (output == null) {
+                        showToast(R.string.home_export_failed)
+                        return@save
+                    }
                     output.write(
                         OSUtils.collectOSInfo(
                             requireContext(),
@@ -58,8 +61,11 @@ class LogsFragment(
                     output.write("\n\n".toByteArray())
                     output.write(logCache!!.toByteArray())
                 }
+                showToast(R.string.logs_saved)
+            } catch (_: Exception) {
+                // the document provider failed to open or write the file
+                showToast(R.string.home_export_failed)
             }
-            showToast(R.string.logs_saved)
         }
 
     private fun updateLogs() {
