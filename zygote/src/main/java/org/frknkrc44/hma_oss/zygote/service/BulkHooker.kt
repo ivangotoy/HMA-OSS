@@ -22,6 +22,7 @@ import org.frknkrc44.hma_oss.zygote.util.ZygoteConstants.CONSTRUCTOR_METHOD_NAME
 import org.frknkrc44.hma_oss.zygote.util.ZygoteConstants.PARAMETER_COUNT_UNKNOWN
 import java.lang.invoke.MethodHandle
 import java.lang.reflect.Executable
+import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
 
@@ -290,13 +291,19 @@ class BulkHooker {
             val thisObject = frame.getArgument(0)
             val args = frame.dumpArgs(true)
 
-            // TODO: DO NOT USE ... as Constructor<*>, IT BREAKS TANGO!!!
-            value.result = (element.method as Method).invoke(thisObject, *args)
-
-            ArtMethodUtils.setExecutableEntryPoint(
-                element.method!!,
-                element.memoryAddresses?.first!!
-            )
+            try {
+                // TODO: DO NOT USE ... as Constructor<*>, IT BREAKS TANGO!!!
+                value.result = (element.method as Method).invoke(thisObject, *args)
+            } catch (e: InvocationTargetException) {
+                // the caller gets what the original method threw
+                throw e.targetException
+            } finally {
+                // re-arm the hook even when the original method threw
+                ArtMethodUtils.setExecutableEntryPoint(
+                    element.method!!,
+                    element.memoryAddresses?.first!!
+                )
+            }
         } else {
             Transformers.invokeExactNoChecks(original, frame)
         }
