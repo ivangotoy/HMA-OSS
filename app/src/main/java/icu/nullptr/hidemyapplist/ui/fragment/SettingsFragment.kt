@@ -42,8 +42,10 @@ import icu.nullptr.hidemyapplist.ui.util.withDisableButton
 import icu.nullptr.hidemyapplist.util.ConfigUtils.getLocale
 import icu.nullptr.hidemyapplist.util.PackageHelper.findEnabledAppComponent
 import icu.nullptr.hidemyapplist.util.SuUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.frknkrc44.hma_oss.BuildConfig
 import org.frknkrc44.hma_oss.R
 import org.frknkrc44.hma_oss.databinding.FragmentSettingsBinding
@@ -504,9 +506,14 @@ class SettingsFragment : Fragment(R.layout.fragment_settings), PreferenceFragmen
                     .setTitle(R.string.settings_force_clean_env)
                     .setMessage(R.string.settings_is_clean_env_summary)
                     .setPositiveButton(android.R.string.ok) { _, _ ->
-                        val result = SuUtils.execPrivileged("rm -rf /data/misc/hide_my_applist*")
-                        if (result) showToast(R.string.settings_force_clean_env_toast_successful)
-                        else showToast(R.string.settings_permission_denied)
+                        // su may wait for the root manager's prompt: not on the main thread
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            val result = withContext(Dispatchers.IO) {
+                                SuUtils.execPrivileged("rm -rf /data/misc/hide_my_applist*")
+                            }
+                            if (result) showToast(R.string.settings_force_clean_env_toast_successful)
+                            else showToast(R.string.settings_permission_denied)
+                        }
                     }
                     .setNegativeButton(android.R.string.cancel, null)
                     .show()
