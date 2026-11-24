@@ -43,7 +43,8 @@ class SettingsTemplateConfFragment : Fragment(R.layout.fragment_template_setting
                 .setTitle(if (delete) R.string.template_delete_title else R.string.template_name_invalid)
                 .setMessage(if (delete) R.string.template_delete else R.string.template_name_already_exist)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
-                    saveResult(delete)
+                    // a name already taken stays on this screen; saving would overwrite that template
+                    if (delete || viewModel.name == null) saveResult(delete)
                 }
             if (delete) builder.setNegativeButton(android.R.string.cancel, null)
             builder.show()
