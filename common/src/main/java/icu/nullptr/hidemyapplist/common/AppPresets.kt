@@ -133,10 +133,6 @@ class AppPresets private constructor() {
     ) {
         allAppsCache.add(packageName)
 
-        if (presetList.any { it.value.containsPackage(packageName) }) {
-            return
-        }
-
         var appInfo: ApplicationInfo? = null
         var addedInAList = false
 
