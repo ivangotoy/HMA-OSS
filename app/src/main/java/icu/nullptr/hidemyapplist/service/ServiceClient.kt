@@ -71,10 +71,10 @@ object ServiceClient : IHMAService, IBinder.DeathRecipient {
             val descriptor = service?.readFD(Constants.PARCEL_TYPE_CONFIG) ?: return "{}"
             return readFromPipe(descriptor)
         }
-        set(text) = writeFD(
-            Constants.PARCEL_TYPE_CONFIG,
-            writeIntoPipe(provider ?: return, text),
-        )
+        set(text) {
+            // writeFD sends a copy of the descriptor: close this process's read end afterwards
+            writeIntoPipe(provider ?: return, text).use { writeFD(Constants.PARCEL_TYPE_CONFIG, it) }
+        }
 
     fun forceStop(packageName: String) {
         forceStop(packageName, 0)
