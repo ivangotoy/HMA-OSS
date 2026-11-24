@@ -35,17 +35,13 @@ class StatAdapter(private val onBeginWaitForRefresh: (StatAdapter) -> Unit) : Re
 
             logs[position] = StatItem(packageName, filterCount, refreshing)
 
-            val elements = logs.sortedWith { it1, it2 -> it1.totalCount.compareTo(it2.totalCount) }.asReversed()
-            val newIndex = elements.indexOfFirst { it.packageName == packageName }
+            // stable: equal counts keep their order (a reversed ascending sort swapped them every time)
+            val elements = logs.sortedByDescending { it.totalCount }
 
             logs.sync(elements)
 
-            if (newIndex != position) {
-                notifyItemMoved(position, newIndex)
-                notifyItemChanged(newIndex)
-            } else {
-                notifyItemChanged(position)
-            }
+            // rows appended unsorted may move as well, not only this one
+            notifyItemRangeChanged(0, logs.size)
         }
 
         if (!wasRefreshing && refreshing) {
