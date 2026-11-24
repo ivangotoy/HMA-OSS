@@ -61,15 +61,20 @@ class ContentProviderHook : IFrameworkHook {
 
                     val replacement = service.getSpoofedSetting(caller, name, database)
                     if (replacement != null) {
-                        val columnNames = projection ?: arrayOf("name", "value")
+                        // the provider's own cursor gives the column set and order the caller expects
+                        val original = returnValue.result as? Cursor
+                        val columnNames = original?.columnNames ?: projection ?: arrayOf("name", "value")
                         val nameInColumns = "name" in columnNames
                         val valueInColumns = "value" in columnNames
+                        if (!nameInColumns && !valueInColumns) return@hookAfter
 
-                        val returnedArray = when {
-                            nameInColumns && valueInColumns -> arrayOf(replacement.name, replacement.value)
-                            valueInColumns -> arrayOf(replacement.value)
-                            nameInColumns -> arrayOf(replacement.name)
-                            else -> return@hookAfter
+                        val hasRow = original?.moveToFirst() == true
+                        val returnedArray = Array(columnNames.size) { i ->
+                            when (columnNames[i]) {
+                                "name" -> replacement.name
+                                "value" -> replacement.value
+                                else -> if (hasRow) original?.getString(i) else null
+                            }
                         }
 
                         logD(TAG) { "@spoofSettings QUERY $name in $database replaced for $caller" }
