@@ -44,4 +44,8 @@ object ActivityManagerUtils {
     fun getContentProviderExternal(name: String?, userId: Int, token: IBinder? = null, tag: String? = null): IContentProvider? {
         return activityService?.getContentProviderExternal(name, userId, token, tag)?.provider
     }
+
+    fun removeContentProviderExternal(name: String?, userId: Int, token: IBinder? = null) {
+        activityService?.removeContentProviderExternalAsUser(name, token, userId)
+    }
 }

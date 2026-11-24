@@ -9,6 +9,7 @@ import icu.nullptr.hidemyapplist.common.Utils.getUserFromCallingUid
 import org.frknkrc44.hma_oss.common.BuildConfig
 import org.frknkrc44.hma_oss.zygote.util.ActivityManagerUtils.getContentProviderExternal
 import org.frknkrc44.hma_oss.zygote.util.ActivityManagerUtils.registerUidObserver
+import org.frknkrc44.hma_oss.zygote.util.ActivityManagerUtils.removeContentProviderExternal
 import org.frknkrc44.hma_oss.zygote.util.Logcat.logD
 import org.frknkrc44.hma_oss.zygote.util.Logcat.logE
 import org.frknkrc44.hma_oss.zygote.util.Logcat.logI
@@ -41,13 +42,18 @@ object UserService {
                 }
                 val extras = Bundle()
                 extras.putBinder("binder", service)
-                val reply = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val attr = AttributionSource.Builder(1000).setPackageName("android").build()
-                    provider?.call(attr, PROVIDER_AUTHORITY, "", null, extras)
-                } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.R) {
-                    provider?.call("android", null, PROVIDER_AUTHORITY, "", null, extras)
-                } else {
-                    provider?.call("android", PROVIDER_AUTHORITY, "", null, extras)
+                val reply = try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val attr = AttributionSource.Builder(1000).setPackageName("android").build()
+                        provider?.call(attr, PROVIDER_AUTHORITY, "", null, extras)
+                    } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.R) {
+                        provider?.call("android", null, PROVIDER_AUTHORITY, "", null, extras)
+                    } else {
+                        provider?.call("android", PROVIDER_AUTHORITY, "", null, extras)
+                    }
+                } finally {
+                    // each get adds a handle that keeps the manager's process at foreground priority
+                    if (provider != null) removeContentProviderExternal(PROVIDER_AUTHORITY, userId)
                 }
                 if (reply == null) {
                     logE(TAG) { "Failed to send binder to app" }

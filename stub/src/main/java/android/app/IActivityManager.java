@@ -11,6 +11,9 @@ public interface IActivityManager extends IInterface {
     ContentProviderHolder getContentProviderExternal(String name, int userId, IBinder token, String tag)
             throws RemoteException;
 
+    void removeContentProviderExternalAsUser(String name, IBinder token, int userId)
+            throws RemoteException;
+
     void registerUidObserver(IUidObserver observer, int which, int cutpoint, String callingPackage)
             throws RemoteException;
 
