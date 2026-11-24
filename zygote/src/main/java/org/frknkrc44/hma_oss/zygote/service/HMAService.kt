@@ -661,6 +661,14 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
                             }
                         }
                     }
+
+                    // the GMS check runs after the presets: keep its result in the saved cache too
+                    synchronized(presetCacheLock) {
+                        if (RiskyPackageUtils.instance.appHasGMSConnection(packageName, true) &&
+                            dataHolder.presetCache.riskyPackageCache.add(packageName)) {
+                            writePresetCache()
+                        }
+                    }
                 }
                 Intent.ACTION_PACKAGE_REMOVED -> {
                     // ignore package updates
