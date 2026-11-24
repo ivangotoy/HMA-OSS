@@ -28,6 +28,7 @@ object ServiceClient : IHMAService, IBinder.DeathRecipient {
     @Volatile
     private var service: IHMAService? = null
     private var provider: ServiceProvider? = null
+    private var linkedBinder: IBinder? = null
 
     fun linkService(provider: ServiceProvider, binder: IBinder) {
         this.provider = provider
@@ -36,10 +37,18 @@ object ServiceClient : IHMAService, IBinder.DeathRecipient {
             arrayOf(IHMAService::class.java),
             ServiceProxy(IHMAService.Stub.asInterface(binder))
         ) as IHMAService
-        binder.linkToDeath(this, 0)
+        // the binder comes again on every activation: one death link per binder, not one per hand-over
+        synchronized(this) {
+            if (linkedBinder !== binder) {
+                linkedBinder?.let { runCatching { it.unlinkToDeath(this, 0) } }
+                binder.linkToDeath(this, 0)
+                linkedBinder = binder
+            }
+        }
     }
 
     override fun binderDied() {
+        synchronized(this) { linkedBinder = null }
         service = null
         Log.e(TAG, "Binder died")
     }
