@@ -439,6 +439,9 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         fetchLatestUpdate { updateInfo ->
             if (updateInfo.versionName != BuildConfig.VERSION_NAME) {
                 withContext(Dispatchers.Main) {
+                    // one dialog per process: another start while it is shown fetched and stacked a second one
+                    if (hmaApp.updateDialogSkipped) return@withContext
+
                     MaterialAlertDialogBuilder(requireContext())
                         .setCancelable(false)
                         .setTitle(getString(R.string.home_new_update, updateInfo.versionName))
@@ -456,6 +459,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                             hmaApp.updateDialogSkipped = true
                         }
                         .show()
+
+                    hmaApp.updateDialogSkipped = true
                 }
             }
         }
