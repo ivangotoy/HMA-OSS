@@ -20,11 +20,19 @@ import org.frknkrc44.hma_oss.R
 import org.frknkrc44.hma_oss.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
+    companion object {
+        private var createdInThisProcess = false
+    }
+
     var readyToKill: Boolean = true
     var currentConfiguration: Configuration? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        // A new process (the old one was killed in the background) starts at the home screen: only
+        // the home screen loads the config, and a restored screen would save the default one over it
+        val restoredState = savedInstanceState.takeIf { createdInThisProcess }
+        createdInThisProcess = true
+        super.onCreate(restoredState)
 
         enableEdgeToEdge()
 
