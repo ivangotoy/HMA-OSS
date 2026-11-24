@@ -145,6 +145,9 @@ class AppPresets private constructor() {
                 if (appInfo == null)
                     appInfo = resolveAppInfo()
 
+                // as in reloadPresets: system apps never go into the accessibility preset
+                if (it.value is AccessibilityAppsPreset && appInfo?.isSystemApp() == true) return@forEach
+
                 try {
                     if (appInfo != null && it.value.addPackageInfoPreset(appInfo)) {
                         onModifyCache(it.key)
