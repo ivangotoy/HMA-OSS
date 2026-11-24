@@ -1,6 +1,7 @@
 package icu.nullptr.hidemyapplist.ui.adapter
 
 import android.view.ViewGroup
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import icu.nullptr.hidemyapplist.common.Constants
 import icu.nullptr.hidemyapplist.service.ConfigManager
@@ -15,20 +16,25 @@ class AppManageAdapter(
     inner class ViewHolder(view: AppItemView) : AppSelectAdapter.ViewHolder(view) {
         init {
             view.setOnClickListener {
+                // the package of the tapped row: the row may be rebound while the dialog is open
+                val position = absoluteAdapterPosition
+                if (position == RecyclerView.NO_POSITION) return@setOnClickListener
+                val packageName = filteredList[position]
+
                 if (!PrefManager.bypassRiskyPackageWarning && Constants.riskyPackages.contains(view.binding.packageName.text)) {
                     MaterialAlertDialogBuilder(view.context)
                         .setTitle(R.string.app_warning_risky_package_title)
                         .setMessage(R.string.app_warning_risky_package_desc)
                         .setNegativeButton(android.R.string.cancel, null)
                         .setPositiveButton(android.R.string.ok) { _, _ ->
-                            onItemClickListener.invoke(filteredList[absoluteAdapterPosition])
+                            onItemClickListener.invoke(packageName)
                         }
                         .show()
 
                     return@setOnClickListener
                 }
 
-                onItemClickListener.invoke(filteredList[absoluteAdapterPosition])
+                onItemClickListener.invoke(packageName)
             }
         }
 
