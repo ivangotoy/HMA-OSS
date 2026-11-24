@@ -31,7 +31,7 @@ class SettingsTemplateInnerFragment : BaseSettingsPTFragment() {
                     R.array.settings_template_inner_action_texts,
                 ) { dialog, which ->
                     when (which) {
-                        0 -> launchEditSettingFragment(item.toEditSettingFragmentArgs())
+                        0 -> launchEditSettingFragment(item.toEditSettingFragmentArgs(), item)
                         1 -> {
                             val index = adapter.items.indexOf(item)
                             if (index >= 0) {
@@ -97,11 +97,11 @@ class SettingsTemplateInnerFragment : BaseSettingsPTFragment() {
         }
     }
 
-    fun launchEditSettingFragment(args: EditSettingFragmentArgs) {
+    fun launchEditSettingFragment(args: EditSettingFragmentArgs, original: ReplacementItem? = null) {
         setFragmentResultListener("edit_setting") { _, bundle ->
             fun deal() {
                 val item = bundle.toTargetSettingList().firstOrNull() ?: return
-                processIncomingSetting(item)
+                processIncomingSetting(item, original)
             }
             deal()
             clearFragmentResultListener("edit_setting")
@@ -110,7 +110,26 @@ class SettingsTemplateInnerFragment : BaseSettingsPTFragment() {
         navigate(R.id.nav_settings_templates_edit_setting, args.toBundle())
     }
 
-    private fun processIncomingSetting(item: ReplacementItem) {
+    private fun processIncomingSetting(item: ReplacementItem, original: ReplacementItem? = null) {
+        // an edit replaces the entry it started from, even with a new name or database
+        val originalIndex = original?.let { o ->
+            adapter.items.indexOfFirst { it.name == o.name && it.database == o.database }
+        } ?: -1
+        if (originalIndex >= 0) {
+            adapter.items[originalIndex] = item
+            adapter.notifyItemChanged(originalIndex)
+
+            // and an entry that already had the new name and database goes
+            val duplicate = adapter.items.withIndex().indexOfFirst { (i, it) ->
+                i != originalIndex && it.name == item.name && it.database == item.database
+            }
+            if (duplicate >= 0) {
+                adapter.items.removeAt(duplicate)
+                adapter.notifyItemRemoved(duplicate)
+            }
+            return
+        }
+
         val index = adapter.items.indexOfFirst { it.name == item.name && it.database == item.database }
 
         if (index >= 0) {
