@@ -14,6 +14,9 @@ val appVerName = rootProject.extra["appVerName"] as String
 android {
     namespace = "$appPackageName.zygote"
 
+    // JVM unit tests run against android.jar stubs
+    testOptions.unitTests.isReturnDefaultValues = true
+
     defaultConfig {
         applicationId = namespace
     }
@@ -155,6 +158,8 @@ zygisk {
 dependencies {
     implementation(projects.common)
     compileOnly(projects.stub)
+    testImplementation(libs.junit)
+    testImplementation(projects.stub)
 
     implementation(libs.androidx.annotation.jvm)
     implementation(libs.io.github.vova7878.r8annotations)
