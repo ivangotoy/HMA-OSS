@@ -874,6 +874,9 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
             loading.cleanRemnantsFromConfig()
             config.set(loading)
             cache = loading
+
+            // the cached hide decisions belong to the old config
+            dataHolder.clearUidCache()
         }
 
         if (cache.configVersion != BuildConfig.CONFIG_VERSION) {
