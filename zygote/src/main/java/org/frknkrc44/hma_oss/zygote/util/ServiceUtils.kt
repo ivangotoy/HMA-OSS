@@ -137,6 +137,7 @@ object ServiceUtils {
                     "BulkHooker",
                     "com.v7878",
                     "MethodHandle",
+                    "java.lang.reflect.Method",
                     BuildConfig.APP_PACKAGE_NAME,
                 ) && !item.fileName.containsMultiple(
                     "r8-map-id-",
