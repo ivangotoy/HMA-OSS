@@ -58,6 +58,8 @@ class BackupRestoreFragment : Fragment(R.layout.fragment_backup_restore) {
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) backup@{ uri ->
             if (uri == null) return@backup
 
+            // the steps below change importedConfig: a failed export puts it back for another try
+            val unchanged = importedConfig.toString()
             clearNotImportedItems {
                 if (!includeSettings) {
                     val newConfig = JsonConfig(CONFIG_VERSION_NO_SETTINGS)
@@ -68,17 +70,20 @@ class BackupRestoreFragment : Fragment(R.layout.fragment_backup_restore) {
                 }
 
                 // opened here, not before trimming: this callback may run later or not at all
-                try {
-                    val output = contentResolver.openOutputStream(uri)
-                    if (output == null) {
-                        showToast(R.string.home_export_failed)
-                    } else {
-                        output.use { it.write(importedConfig.toString().toByteArray()) }
-                        showToast(R.string.home_exported)
-                        navController.navigateUp()
-                    }
+                val written = try {
+                    contentResolver.openOutputStream(uri)?.use {
+                        it.write(importedConfig.toString().toByteArray())
+                    } != null
                 } catch (_: Exception) {
                     // the document provider failed to open or write the file
+                    false
+                }
+
+                if (written) {
+                    showToast(R.string.home_exported)
+                    navController.navigateUp()
+                } else {
+                    importedConfig = JsonConfig.parse(unchanged)
                     showToast(R.string.home_export_failed)
                 }
             }
