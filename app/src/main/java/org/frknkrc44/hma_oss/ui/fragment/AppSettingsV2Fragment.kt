@@ -253,11 +253,13 @@ class AppSettingsV2Fragment : Fragment(R.layout.fragment_settings) {
                                 if (userIds.size == 1) {
                                     startMainActivity(userIds.first(), forceStop)
                                 } else if (userIds.size > 1) {
+                                    val ids = userIds.toList()
                                     MaterialAlertDialogBuilder(pref.context).apply {
                                         setItems(
-                                            userIds.map { id -> id.toString() }.toTypedArray(),
-                                        ) { _, userId ->
-                                            startMainActivity(userId, forceStop)
+                                            ids.map { id -> id.toString() }.toTypedArray(),
+                                        ) { _, which ->
+                                            // the dialog gives the row index, not the user id
+                                            startMainActivity(ids[which], forceStop)
                                         }
                                     }.show()
                                 }
