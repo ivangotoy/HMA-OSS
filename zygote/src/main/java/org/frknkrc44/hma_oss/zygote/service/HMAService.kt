@@ -646,7 +646,15 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
                     }
 
                     // Handle app presets
-                    handlePackageAdded(pms, packageName) { preset ->
+                    // the package may be installed in another user only
+                    val resolveAppInfo: () -> ApplicationInfo? = {
+                        binderLocalScope {
+                            UserManagerUtils.userIds.asList().firstNotNullOfOrNull { id ->
+                                runCatching { pms.getPackageInfoCompat(packageName, 0L, id)?.applicationInfo }.getOrNull()
+                            }
+                        }
+                    }
+                    handlePackageAdded(pms, packageName, resolveAppInfo) { preset ->
                         synchronized(presetCacheLock) {
                             if (dataHolder.addIntoPresetCache(preset, packageName)) {
                                 writePresetCache()
