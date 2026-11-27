@@ -41,11 +41,11 @@ object SystemServerHook {
 
             logI(TAG) { "Eureka!" }
 
-            val pms = waitForService(PACKAGE_MANAGER_SERVICE) as IPackageManager
-            val pmn = waitForService(PACKAGE_MANAGER_NATIVE_SERVICE)
-            logD(TAG) { "Got pms: $pms, $pmn" }
-
             try {
+                val pms = waitForService(PACKAGE_MANAGER_SERVICE) as IPackageManager
+                val pmn = waitForService(PACKAGE_MANAGER_NATIVE_SERVICE)
+                logD(TAG) { "Got pms: $pms, $pmn" }
+
                 UserService.register(pms, pmn)
                 logI(TAG) { "User service started" }
             } catch (cause: Throwable) {
