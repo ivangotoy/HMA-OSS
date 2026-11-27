@@ -34,6 +34,7 @@ import org.frknkrc44.hma_oss.zygote.hook.ActivityHook
 import org.frknkrc44.hma_oss.zygote.hook.AppDataIsolationHook
 import org.frknkrc44.hma_oss.zygote.hook.BroadcastHook
 import org.frknkrc44.hma_oss.zygote.hook.ContentProviderHook
+import org.frknkrc44.hma_oss.zygote.hook.DpmHook
 import org.frknkrc44.hma_oss.zygote.hook.IFrameworkHook
 import org.frknkrc44.hma_oss.zygote.hook.ImmHook
 import org.frknkrc44.hma_oss.zygote.hook.InstallerHookTarget29
@@ -69,6 +70,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.io.path.Path
+import kotlin.random.Random
 
 class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
 
@@ -189,9 +191,12 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
             }
         }
         if (!this::dataDir.isInitialized) {
+            // add some fun for future
+            // suffix length is not hardcoded to 16,
+            // and we include numbers to dir name now
             dataDir = "/data/misc/hide_my_applist_" + generateRandomString(
-                16,
-                ('a'..'z').toList()
+                Random.nextInt(16, 32),
+                ('a'..'z') + ('0' .. '9').toList()
             )
         }
 
@@ -331,8 +336,9 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
         frameworkHooks.add(ImmHook())
         frameworkHooks.add(ZygoteHook())
         frameworkHooks.add(UsageStatsHook())
+        frameworkHooks.add(DpmHook())
 
-        frameworkHooks.forEach(IFrameworkHook::load)
+        frameworkHooks.forEach(IFrameworkHook::loadWithMessage)
         logI(TAG) { "Hooks installed" }
     }
 
@@ -895,11 +901,9 @@ class HMAService(val pms: IPackageManager, val pmn: Any?) : IHMAService.Stub() {
         var cache = getConfig()
         if (cache != loading) {
             loading.cleanRemnantsFromConfig()
+            dataHolder.clearUidCache()
             config.set(loading)
             cache = loading
-
-            // the cached hide decisions belong to the old config
-            dataHolder.clearUidCache()
         }
 
         if (cache.configVersion != BuildConfig.CONFIG_VERSION) {

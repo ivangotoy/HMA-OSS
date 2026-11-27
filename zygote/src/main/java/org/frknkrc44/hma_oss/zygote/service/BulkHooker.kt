@@ -282,26 +282,26 @@ class BulkHooker {
     ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             val element = findHookElement(clazz, methodName)!!
+            val memoryAddresses = element.memoryAddresses!!
 
             ArtMethodUtils.setExecutableEntryPoint(
                 element.method!!,
-                element.memoryAddresses?.second!!
+                memoryAddresses.second!!
             )
 
-            val thisObject = frame.getArgument(0)
-            val args = frame.dumpArgs(true)
-
             try {
+                val thisObject = frame.getArgument(0)
+                val args = frame.dumpArgs(true)
+
                 // TODO: DO NOT USE ... as Constructor<*>, IT BREAKS TANGO!!!
                 value.result = (element.method as Method).invoke(thisObject, *args)
             } catch (e: InvocationTargetException) {
                 // the caller gets what the original method threw
                 throw e.targetException
             } finally {
-                // re-arm the hook even when the original method threw
                 ArtMethodUtils.setExecutableEntryPoint(
                     element.method!!,
-                    element.memoryAddresses?.first!!
+                    memoryAddresses.first!!
                 )
             }
         } else {
@@ -352,11 +352,11 @@ class BulkHooker {
         val isConstructorHook = methodName == CONSTRUCTOR_METHOD_NAME
 
         return if (isConstructorHook) {
-            Reflection.getHiddenConstructors(clazz).firstOrNull {
+            Reflection.getDeclaredConstructors(clazz).firstOrNull {
                 return@firstOrNull argumentCount < 0 || argumentCount == it.parameterCount
             }
         } else {
-            Reflection.getHiddenExecutables(clazz).firstOrNull {
+            Reflection.getDeclaredMethods(clazz).firstOrNull {
                 return@firstOrNull methodName == it.name &&
                         (argumentCount < 0 || argumentCount == it.parameterCount)
             }
